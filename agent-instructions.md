@@ -444,6 +444,16 @@ Reglas:
 - Las pruebas de UI deben usar backend no interactivo, por ejemplo `matplotlib.use("Agg")`.
 - La IA debe ejecutar `pytest -q` después de cada etapa.
 - Si una prueba física falla, no se debe ajustar arbitrariamente la tolerancia para volverla verde.
+- **Formato de aserciones para depuración:** En la parte de los `assert` se deben colocar variables intermedias de manera que al hacer debug se pueda inspeccionar qué valor se está evaluando. Por ejemplo, en vez de:
+  ```python
+  assert abs(abs(F0) - 0.5) < 1e-6
+  ```
+  Se debe escribir:
+  ```python
+  error = abs(abs(F0) - 0.5)
+  tolerance = 1e-6
+  assert error < tolerance
+  ```
 
 ---
 

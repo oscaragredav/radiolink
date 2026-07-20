@@ -56,8 +56,10 @@ def test_link_params_replace_creates_new_instance():
 
     new_params = replace(params, f_hz=14e9)
 
-    assert params.f_hz == 7e9
-    assert new_params.f_hz == 14e9
+    f_hz_orig = params.f_hz
+    f_hz_new = new_params.f_hz
+    assert f_hz_orig == 7e9
+    assert f_hz_new == 14e9
     assert params is not new_params
 
 
@@ -72,9 +74,13 @@ def test_terrain_data_properties():
         source="test",
     )
 
-    assert terrain.d_total_m == 3000.0
-    assert terrain.n_points == 4
-    assert np.allclose(terrain.d2_m, np.array([3000.0, 2000.0, 1000.0, 0.0]))
+    d_total = terrain.d_total_m
+    n_pts = terrain.n_points
+    expected_d2 = np.array([3000.0, 2000.0, 1000.0, 0.0])
+
+    assert d_total == 3000.0
+    assert n_pts == 4
+    assert np.allclose(terrain.d2_m, expected_d2)
 
 
 def test_link_profile_is_immutable():
@@ -149,6 +155,10 @@ def test_link_profile_optional_fields_default_to_none():
         l_fs_db=130.0,
     )
 
-    assert profile.p_rx_dbm is None
-    assert profile.margin_db is None
-    assert profile.availability_pct is None
+    p_rx = profile.p_rx_dbm
+    margin = profile.margin_db
+    avail = profile.availability_pct
+
+    assert p_rx is None
+    assert margin is None
+    assert avail is None

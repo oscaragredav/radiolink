@@ -19,17 +19,24 @@ def test_load_validation_flat():
     """[F-1.1] validation_flat.csv se carga con 201 puntos y d_total=10000m."""
     terrain = load_terrain_csv("data/profiles/validation_flat.csv")
 
-    assert terrain.n_points == 201
-    assert terrain.d_total_m == 10_000.0
-    assert terrain.d2_m[0] == 10_000.0
-    assert terrain.d2_m[-1] == 0.0
+    n_points = terrain.n_points
+    d_total_m = terrain.d_total_m
+    d2_m_start = terrain.d2_m[0]
+    d2_m_end = terrain.d2_m[-1]
+
+    assert n_points == 201
+    assert d_total_m == 10_000.0
+    assert d2_m_start == 10_000.0
+    assert d2_m_end == 0.0
 
 
 def test_d2_m_at_center():
     """[P-1.1] d2_m en el punto central (índice 100) es 5000 m."""
     terrain = load_terrain_csv("data/profiles/validation_flat.csv")
 
-    assert abs(terrain.d2_m[100] - 5_000.0) < 1e-12
+    error = abs(terrain.d2_m[100] - 5_000.0)
+    tolerance = 1e-12
+    assert error < tolerance
 
 
 def test_invalid_non_monotonic_csv_raises(tmp_path):
@@ -126,8 +133,13 @@ def test_save_and_reload_terrain(tmp_path):
     save_terrain_csv(original, save_path)
     reloaded = load_terrain_csv(save_path)
 
-    assert reloaded.n_points == original.n_points
-    assert reloaded.d_total_m == original.d_total_m
+    n_points_orig = original.n_points
+    n_points_reload = reloaded.n_points
+    d_total_orig = original.d_total_m
+    d_total_reload = reloaded.d_total_m
+
+    assert n_points_reload == n_points_orig
+    assert d_total_reload == d_total_orig
     assert np.allclose(reloaded.d1_m, original.d1_m)
     assert np.allclose(reloaded.elevation_m, original.elevation_m)
 
@@ -136,7 +148,8 @@ def test_validation_flat_elevation_is_zero():
     """El perfil plano de validación tiene elevación cero en todos los puntos."""
     terrain = load_terrain_csv("data/profiles/validation_flat.csv")
 
-    assert np.all(terrain.elevation_m == 0.0)
+    elevations = terrain.elevation_m
+    assert np.all(elevations == 0.0)
 
 
 def test_validation_flat_spacing_is_50m():
@@ -144,12 +157,15 @@ def test_validation_flat_spacing_is_50m():
     terrain = load_terrain_csv("data/profiles/validation_flat.csv")
 
     diffs = np.diff(terrain.d1_m)
-    assert np.allclose(diffs, 50.0)
+    expected_diff = 50.0
+    assert np.allclose(diffs, expected_diff)
 
 
 def test_load_validation_edge():
     """validation_edge.csv se carga correctamente (misma grilla que flat)."""
     terrain = load_terrain_csv("data/profiles/validation_edge.csv")
 
-    assert terrain.n_points == 201
-    assert terrain.d_total_m == 10_000.0
+    n_points = terrain.n_points
+    d_total_m = terrain.d_total_m
+    assert n_points == 201
+    assert d_total_m == 10_000.0

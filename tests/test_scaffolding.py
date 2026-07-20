@@ -13,8 +13,12 @@ def test_constants_exist():
     """[P-0.1] y [P-0.2]: constantes físicas con valores correctos."""
     from config.constants import K_STANDARD, R_EARTH
 
-    assert R_EARTH == 6_371_000
-    assert abs(K_STANDARD - 4 / 3) < 1e-12
+    r_earth_val = R_EARTH
+    assert r_earth_val == 6_371_000
+
+    error_k = abs(K_STANDARD - 4 / 3)
+    tolerance_k = 1e-12
+    assert error_k < tolerance_k
 
 
 def test_main_importable():
@@ -28,8 +32,12 @@ def test_defaults_importable():
     """Valores por defecto importables y coherentes."""
     from config.defaults import DEFAULT_FREQ_HZ, DEFAULT_K
 
-    assert DEFAULT_FREQ_HZ == 7e9
-    assert abs(DEFAULT_K - 4 / 3) < 1e-12
+    freq_val = DEFAULT_FREQ_HZ
+    assert freq_val == 7e9
+
+    error_k = abs(DEFAULT_K - 4 / 3)
+    tolerance_k = 1e-12
+    assert error_k < tolerance_k
 
 
 def test_all_constants_defined():
@@ -42,8 +50,17 @@ def test_all_constants_defined():
         R_EARTH_KM,
     )
 
-    assert C_LIGHT == 3e8
-    assert R_EARTH == 6_371_000
-    assert R_EARTH_KM == 6_371.0
-    assert abs(K_STANDARD - 4 / 3) < 1e-12
-    assert G_STANDARD == -39.0
+    c_light_val = C_LIGHT
+    r_earth_val = R_EARTH
+    r_earth_km_val = R_EARTH_KM
+    g_standard_val = G_STANDARD
+
+    assert c_light_val == 3e8
+    assert r_earth_val == 6_371_000
+    assert r_earth_km_val == 6_371.0
+
+    error_k = abs(K_STANDARD - 4 / 3)
+    tolerance_k = 1e-12
+    assert error_k < tolerance_k
+
+    assert g_standard_val == -39.0

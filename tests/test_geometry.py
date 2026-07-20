@@ -12,7 +12,8 @@ def test_los_is_horizontal_for_equal_endpoint_heights():
     )
     d1_m = np.linspace(0.0, 10_000.0, 201)
     h_los_m = los_height(H_tx_m, H_rx_m, d1_m, 10_000.0)
-    assert np.allclose(h_los_m, 10.0)
+    expected_height = 10.0
+    assert np.allclose(h_los_m, expected_height)
 
 
 def test_los_professor_example():
@@ -28,4 +29,6 @@ def test_los_professor_example():
         np.array([8_000.0]),
         20_000.0,
     )
-    assert abs(h_los_m[0] - 126.0) < 0.1
+    error = abs(h_los_m[0] - 126.0)
+    tolerance = 0.1
+    assert error < tolerance
