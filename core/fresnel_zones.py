@@ -72,7 +72,7 @@ def los_clearance(
     h_los_m: np.ndarray,
     z_eff_m: np.ndarray,
 ) -> np.ndarray:
-    """Calcula el despeje relativo a la línea de visión directa (LOS).
+    """Calcula el despeje relativo a la línea de visión directa (C_LOS).
 
     Ref: EQ-10 (MATHSPEC v1.1).
 
