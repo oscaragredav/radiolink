@@ -56,6 +56,8 @@ from ui.callbacks import (
     on_toggle_power_budget,
     on_load_api,
     on_ptx_changed, on_gtx_changed, on_grx_changed, on_sensitivity_changed,
+    on_toggle_mobile_obstacle, on_mobile_total_changed,
+    on_mobile_position_changed, on_mobile_height_changed,
 )
 
 
@@ -102,6 +104,9 @@ class App:
             sensitivity_dbm=-85.0, a_climate=0.5, b_terrain=1.0,
         )
         self.show_power_budget = pb_params is not None
+        self.mobile_mode = False
+        self._updating_mobile = False
+        self._terrain_before_mobile = None
         self.text_dndh: Optional[object] = None  # Text de dN/dh (etapa 8)
 
         # ── Figura y paneles de datos ──────────────────────────────────
@@ -217,10 +222,25 @@ class App:
             valmax=-60.0, valinit=self.pb_params.sensitivity_dbm,
             color=COLOR_SLIDER_COLOR,
         )
+        self._sl_d_total = Slider(
+            ax=wa.ax_slider_d_total, label="d total [km]", valmin=1.0,
+            valmax=50.0, valinit=10.0, color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_d_obs = Slider(
+            ax=wa.ax_slider_d_obs, label="d obs [km]", valmin=0.1,
+            valmax=9.9, valinit=5.0, color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_z_obs = Slider(
+            ax=wa.ax_slider_z_obs, label="z obs [m]", valmin=0.0,
+            valmax=300.0, valinit=0.0, color=COLOR_SLIDER_COLOR,
+        )
         # Estilo de los sliders
         for sl in (self._sl_freq, self._sl_k, self._sl_htx, self._sl_hrx,
                    self._sl_htx_b, self._sl_hrx_b, self._sl_ptx,
                    self._sl_gtx, self._sl_grx, self._sl_sensitivity):
+            sl.label.set_color(COLOR_WIDGET_TEXT)
+            sl.valtext.set_color(COLOR_WIDGET_TEXT)
+        for sl in (self._sl_d_total, self._sl_d_obs, self._sl_z_obs):
             sl.label.set_color(COLOR_WIDGET_TEXT)
             sl.valtext.set_color(COLOR_WIDGET_TEXT)
         # ── Texto de dN/dh (actualizado por slider K) ─────────────────
@@ -244,7 +264,12 @@ class App:
             ax=wa.ax_btn_api, label="Cargar API",
             color=COLOR_BTN_FACE, hovercolor="#434C5E",
         )
-        for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api):
+        self._btn_mobile = Button(
+            ax=wa.ax_btn_mobile, label="Obstáculo Móvil",
+            color=COLOR_BTN_FACE, hovercolor="#434C5E",
+        )
+        for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api,
+                    self._btn_mobile):
             btn.label.set_color(COLOR_WIDGET_TEXT)
             btn.label.set_fontsize(8)
         # ── Toggle terreno crudo ───────────────────────────────────────
@@ -283,16 +308,24 @@ class App:
         self._sl_sensitivity.on_changed(
             lambda v: on_sensitivity_changed(v, self)
         )
+        self._sl_d_total.on_changed(lambda v: on_mobile_total_changed(v, self))
+        self._sl_d_obs.on_changed(
+            lambda v: on_mobile_position_changed(v, self)
+        )
+        self._sl_z_obs.on_changed(lambda v: on_mobile_height_changed(v, self))
         self._btn_v1.on_clicked(lambda e: on_load_case_v1(e, self))
         self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
         self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
         self._btn_api.on_clicked(lambda e: on_load_api(e, self))
+        self._btn_mobile.on_clicked(
+            lambda e: on_toggle_mobile_obstacle(e, self)
+        )
         self._chk_raw.on_clicked(lambda lbl: on_toggle_raw_terrain(lbl, self))
         self._chk_design_b.on_clicked(lambda lbl: on_toggle_design_b(lbl, self))
         self._chk_power_budget.on_clicked(
             lambda lbl: on_toggle_power_budget(lbl, self)
         )
-        self._set_budget_controls_visible(self.show_power_budget)
+        self._refresh_widget_modes()
         # Añadir etiquetas descriptivas sobre los sliders y botones
         self._add_widget_labels()
     def _add_widget_labels(self) -> None:
@@ -334,14 +367,140 @@ class App:
 
     def _set_budget_controls_visible(self, visible: bool) -> None:
         """Alterna el modo compacto de edición del presupuesto."""
+        self._refresh_widget_modes()
+
+    def _refresh_widget_modes(self) -> None:
+        """Evita colisiones visuales e interactivas entre controles.
+
+        Ocultar un ``Axes`` no desactiva el widget de Matplotlib que contiene.
+        Como los controles de budget, móvil y presets reutilizan coordenadas,
+        los widgets ocultos deben quedar también inactivos para que no intenten
+        capturar el ratón junto con el control visible.
+        """
         wa = self._widget_axes
-        for ax in (wa.ax_slider_ptx, wa.ax_slider_gtx, wa.ax_slider_grx,
-                   wa.ax_slider_sensitivity):
-            ax.set_visible(visible)
-        for ax in (wa.ax_btn_v1, wa.ax_btn_v2, wa.ax_btn_v3, wa.ax_btn_api,
-                   wa.ax_toggle_raw, wa.ax_toggle_design_b):
-            ax.set_visible(not visible)
+        budget_visible = self.show_power_budget
+        budget_controls = (
+            (wa.ax_slider_ptx, self._sl_ptx),
+            (wa.ax_slider_gtx, self._sl_gtx),
+            (wa.ax_slider_grx, self._sl_grx),
+            (wa.ax_slider_sensitivity, self._sl_sensitivity),
+        )
+        for ax, widget in budget_controls:
+            ax.set_visible(budget_visible)
+            widget.active = budget_visible
+
+        mobile_controls = (
+            (wa.ax_slider_d_total, self._sl_d_total),
+            (wa.ax_slider_d_obs, self._sl_d_obs),
+            (wa.ax_slider_z_obs, self._sl_z_obs),
+        )
+        for ax, widget in mobile_controls:
+            ax.set_visible(self.mobile_mode)
+            widget.active = self.mobile_mode
+
+        normal = not self.show_power_budget and not self.mobile_mode
+        normal_controls = (
+            (wa.ax_btn_v1, self._btn_v1),
+            (wa.ax_btn_v2, self._btn_v2),
+            (wa.ax_btn_v3, self._btn_v3),
+            (wa.ax_btn_api, self._btn_api),
+            (wa.ax_toggle_raw, self._chk_raw),
+            (wa.ax_toggle_design_b, self._chk_design_b),
+        )
+        for ax, widget in normal_controls:
+            ax.set_visible(normal)
+            # CheckButtons.set_active() cambia una casilla por índice; la
+            # propiedad común ``active`` habilita/deshabilita todo el widget.
+            widget.active = normal
+
+        # Ambos modos son compatibles: el botón móvil y Budget Px permanecen
+        # disponibles. Cuando hay controles extra, el botón se mueve a una
+        # zona que no se superpone con sliders ni checkboxes.
+        compact_mobile_button = self.show_power_budget or self.mobile_mode
+        mobile_button_box = ([0.60, 0.068, 0.065, 0.035]
+                             if compact_mobile_button
+                             else [0.81, 0.127, 0.125, 0.024])
+        wa.ax_btn_mobile.set_position(mobile_button_box)
+        wa.ax_btn_mobile.set_visible(True)
+        self._btn_mobile.active = True
+
+        wa.ax_toggle_power_budget.set_visible(True)
+        self._chk_power_budget.active = True
         self.fig.canvas.draw_idle()
+
+    def _toggle_mobile_obstacle_mode(self) -> None:
+        """Entra o sale del preset sintético conservando el perfil previo."""
+        from dataclasses import replace
+
+        if self.mobile_mode:
+            self.mobile_mode = False
+            if self._terrain_before_mobile is not None:
+                self.terrain, self.params, self.params_b = self._terrain_before_mobile
+            self._terrain_before_mobile = None
+            self._btn_mobile.label.set_text("Obstáculo Móvil")
+            self._widget_axes.ax_btn_mobile.set_position([0.81, 0.127, 0.125, 0.024])
+            self._refresh_widget_modes()
+            self._recompute()
+            return
+
+        self._terrain_before_mobile = (self.terrain, self.params, self.params_b)
+        self.mobile_mode = True
+        # El preset móvil siempre comienza mostrando el terreno sin K.
+        old_eventson = self._chk_raw.eventson
+        self._chk_raw.eventson = False
+        try:
+            self._chk_raw.set_active(0, True)
+        finally:
+            self._chk_raw.eventson = old_eventson
+        self.terrain_artists.line_terrain_raw.set_visible(True)
+        # Alturas del preset plano despejado: con z_obs=0 el core entrega Ld=0.
+        self.params = replace(self.params, h_tx_m=10.0, h_rx_m=10.0, K=1e12)
+        self.params_b = replace(self.params_b, h_tx_m=10.0, h_rx_m=10.0, K=1e12)
+        self._btn_mobile.label.set_text("Salir Móvil")
+        self._refresh_widget_modes()
+        self._update_mobile_terrain(d_total_km=10.0, d_obs_km=5.0,
+                                    z_obs_m=0.0)
+
+    def _update_mobile_terrain(self, d_total_km: float | None = None,
+                               d_obs_km: float | None = None,
+                               z_obs_m: float | None = None) -> None:
+        """Regenera terreno y perfil físico en cada movimiento del slider."""
+        if not self.mobile_mode or self._updating_mobile:
+            return
+        from models.terrain import synthetic_obstacle_terrain
+
+        self._updating_mobile = True
+        try:
+            total = float(self._sl_d_total.val if d_total_km is None
+                          else d_total_km)
+            max_obs = total - 0.1
+            position = float(self._sl_d_obs.val if d_obs_km is None
+                             else d_obs_km)
+            position = min(max(0.1, position), max_obs)
+            height = float(self._sl_z_obs.val if z_obs_m is None else z_obs_m)
+            self._sl_d_obs.valmax = max_obs
+            self._sl_d_obs.ax.set_xlim(self._sl_d_obs.valmin, max_obs)
+            for slider, value in ((self._sl_d_total, total),
+                                  (self._sl_d_obs, position),
+                                  (self._sl_z_obs, height)):
+                old_eventson = slider.eventson
+                slider.eventson = False
+                slider.set_val(value)
+                slider.eventson = old_eventson
+            if height == 0.0:
+                # Mantiene el caso plano en la zona Gd>=0 para todo 1..50 km.
+                from config.constants import C_LIGHT
+                from dataclasses import replace
+                clearance_h = 1.2 * (C_LIGHT / self.params.f_hz
+                                     * (total * 1_000.0) / 8.0) ** 0.5
+                self.params = replace(self.params, h_tx_m=clearance_h,
+                                      h_rx_m=clearance_h, K=1e12)
+                self.params_b = replace(self.params_b, h_tx_m=clearance_h,
+                                        h_rx_m=clearance_h, K=1e12)
+            self.terrain = synthetic_obstacle_terrain(total, position, height)
+            self._recompute()
+        finally:
+            self._updating_mobile = False
 
     def load_api_profile(self, tx_lat: float, tx_lon: float,
                          rx_lat: float, rx_lon: float) -> bool:

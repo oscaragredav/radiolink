@@ -14,6 +14,7 @@ def case_flat_earth() -> tuple[TerrainData, LinkParams]:
     Caso V-1: perfil plano de 10 km.
     """
     terrain = load_terrain_csv("data/profiles/validation_flat.csv")
+    terrain.is_synthetic = True
     params = LinkParams(
         f_hz=7e9,
         h_tx_m=14.64,
@@ -32,6 +33,7 @@ def case_edge_on_los(
     Caso V-2: borde exactamente sobre la LOS.
     """
     terrain = load_terrain_csv("data/profiles/validation_edge.csv")
+    terrain.is_synthetic = True
     params = LinkParams(
         f_hz=f_hz,
         h_tx_m=10.0,

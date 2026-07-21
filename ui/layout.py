@@ -37,6 +37,7 @@ class WidgetAxes:
     ax_btn_v2: Axes
     ax_btn_v3: Axes
     ax_btn_api: Axes
+    ax_btn_mobile: Axes
     ax_toggle_raw: Axes
     ax_toggle_design_b: Axes
     ax_toggle_power_budget: Axes
@@ -44,6 +45,9 @@ class WidgetAxes:
     ax_slider_gtx: Axes
     ax_slider_grx: Axes
     ax_slider_sensitivity: Axes
+    ax_slider_d_total: Axes
+    ax_slider_d_obs: Axes
+    ax_slider_z_obs: Axes
 
 
 def build_figure() -> tuple[Figure, Axes, Axes, Axes]:
@@ -77,7 +81,8 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
         _widget_axis(fig, [0.68, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.77, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.86, 0.155, 0.075, 0.036]),
-        _widget_axis(fig, [0.68, 0.127, 0.255, 0.024]),
+        _widget_axis(fig, [0.68, 0.127, 0.125, 0.024]),
+        _widget_axis(fig, [0.81, 0.127, 0.125, 0.024]),
         _widget_axis(fig, [0.68, 0.068, 0.15, 0.050]),
         _widget_axis(fig, [0.84, 0.068, 0.15, 0.050]),
         _widget_axis(fig, [0.68, 0.010, 0.15, 0.050]),
@@ -85,6 +90,11 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
         _widget_axis(fig, [0.75, 0.153, 0.14, 0.018]),
         _widget_axis(fig, [0.75, 0.116, 0.14, 0.018]),
         _widget_axis(fig, [0.75, 0.079, 0.14, 0.018]),
+        # El modo móvil puede convivir con Budget Px. Sus sliders ocupan la
+        # columna central inferior para no solaparse con los de presupuesto.
+        _widget_axis(fig, [0.48, 0.099, 0.11, 0.018]),
+        _widget_axis(fig, [0.48, 0.062, 0.11, 0.018]),
+        _widget_axis(fig, [0.48, 0.025, 0.11, 0.018]),
     )
 
 

@@ -189,3 +189,65 @@ def test_sliders_sync_after_case_load():
     # Solo verificamos que el params tiene el valor correcto
     assert app.params.K == 1e12
     assert abs(app.params.h_tx_m - 14.64) < 1e-9
+
+
+def test_mobile_mode_deactivates_overlapping_hidden_widgets():
+    """Los controles ocultos no compiten por la captura del ratón."""
+    app = _make_app_lima()
+
+    app._toggle_mobile_obstacle_mode()
+
+    assert app.mobile_mode
+    assert app._btn_mobile.active
+    assert app._sl_d_total.active
+    assert app._sl_d_obs.active
+    assert app._sl_z_obs.active
+    assert not app._chk_raw.active
+    assert not app._chk_design_b.active
+    assert app._chk_power_budget.active
+    assert not app._sl_ptx.active
+
+    app._toggle_mobile_obstacle_mode()
+
+    assert not app.mobile_mode
+    assert app._btn_mobile.active
+    assert not app._sl_d_total.active
+    assert not app._sl_d_obs.active
+    assert not app._sl_z_obs.active
+    assert app._chk_raw.active
+    assert app._chk_design_b.active
+    assert app._chk_power_budget.active
+
+
+def test_mobile_mode_starts_with_raw_terrain_on():
+    """El preset móvil fuerza Terreno s/K a ON al entrar."""
+    app = _make_app_lima()
+    app._chk_raw.set_active(0, False)
+    assert not app.terrain_artists.line_terrain_raw.get_visible()
+    assert not app._chk_raw.get_status()[0]
+
+    app._toggle_mobile_obstacle_mode()
+
+    assert app.terrain_artists.line_terrain_raw.get_visible()
+    assert app._chk_raw.get_status()[0]
+
+
+def test_power_budget_and_mobile_mode_can_be_active_together():
+    """Budget Px conserva controles activos dentro del modo móvil."""
+    from ui.callbacks import on_toggle_power_budget
+
+    app = _make_app_lima()
+    on_toggle_power_budget("Budget Px", app)
+    app._toggle_mobile_obstacle_mode()
+
+    assert app.show_power_budget
+    assert app.mobile_mode
+    assert app._sl_ptx.active
+    assert app._sl_gtx.active
+    assert app._sl_grx.active
+    assert app._sl_sensitivity.active
+    assert app._sl_d_total.active
+    assert app._sl_d_obs.active
+    assert app._sl_z_obs.active
+    assert app._btn_mobile.active
+    assert app._chk_power_budget.active

@@ -39,7 +39,7 @@ def build_results_panel(ax: Axes) -> ResultCells:
 def _values(profile: LinkProfile) -> tuple[list[str], list[float | None]]:
     p, t, i = profile.params, profile.terrain, profile.idx_critical
     latlon = "—"
-    if t.lat is not None and t.lon is not None:
+    if not t.is_synthetic and t.lat is not None and t.lon is not None:
         latlon = f"{t.lat[i]:.5f}, {t.lon[i]:.5f}"
     clear = profile.l_d_db == 0.0
     shown = [f"{p.h_tx_m:.2f} m", f"{p.h_rx_m:.2f} m",

@@ -149,3 +149,15 @@ def on_load_case_v3(event, app: "App") -> None:
 def on_load_api(event, app: "App") -> None:
     """Abre el diálogo dedicado de coordenadas para el perfil remoto."""
     app.open_api_dialog()
+
+def on_toggle_mobile_obstacle(event, app: "App") -> None:
+    app._toggle_mobile_obstacle_mode()
+
+def on_mobile_total_changed(val: float, app: "App") -> None:
+    app._update_mobile_terrain(d_total_km=float(val))
+
+def on_mobile_position_changed(val: float, app: "App") -> None:
+    app._update_mobile_terrain(d_obs_km=float(val))
+
+def on_mobile_height_changed(val: float, app: "App") -> None:
+    app._update_mobile_terrain(z_obs_m=float(val))
