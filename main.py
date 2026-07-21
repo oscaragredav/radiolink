@@ -1,46 +1,51 @@
 """
 RadioLink LOS — Punto de entrada principal.
-
 Versión: 1.1
 Referencia: ARCH v1.1, §4 (main.py).
-
-Este archivo es un stub para la Etapa 0. En etapas posteriores se
-agregará el parseo de argumentos y la instanciación de la aplicación.
+Punto de entrada de la aplicación. Parsea argumentos de línea de comandos
+y lanza la interfaz gráfica.
 """
 
-from config.constants import (
-    C_LIGHT,
-    G_STANDARD,
-    K_STANDARD,
-    R_EARTH,
-    R_EARTH_KM,
-)
-from config.defaults import (
-    DEFAULT_FREQ_HZ,
-    DEFAULT_H_RX_M,
-    DEFAULT_H_TX_M,
-    DEFAULT_K,
-    DEFAULT_PROFILE,
-    DEFAULT_SPACING_M,
-)
-
-
+import argparse
+import sys
+from config.defaults import DEFAULT_PROFILE
+from data.loader import load_terrain_csv
+from ui.app import App
 def main() -> None:
     """Punto de entrada del evaluador de radioenlace LOS."""
-    print("RadioLink LOS v1.1")
-    print(f"  C_LIGHT      = {C_LIGHT:.3e} m/s")
-    print(f"  R_EARTH      = {R_EARTH:.0f} m")
-    print(f"  R_EARTH_KM   = {R_EARTH_KM:.1f} km")
-    print(f"  K_STANDARD   = {K_STANDARD:.10f}")
-    print(f"  G_STANDARD   = {G_STANDARD:.1f} N-units/km")
-    print()
-    print(f"  DEFAULT_FREQ = {DEFAULT_FREQ_HZ:.3e} Hz")
-    print(f"  DEFAULT_H_TX = {DEFAULT_H_TX_M:.1f} m")
-    print(f"  DEFAULT_H_RX = {DEFAULT_H_RX_M:.1f} m")
-    print(f"  DEFAULT_K    = {DEFAULT_K:.10f}")
-    print(f"  DEFAULT_SPACING = {DEFAULT_SPACING_M:.1f} m")
-    print(f"  DEFAULT_PROFILE = {DEFAULT_PROFILE}")
-
-
+    parser = argparse.ArgumentParser(
+        description="RadioLink LOS v1.1 - Evaluador de radioenlace"
+    )
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default=DEFAULT_PROFILE,
+        help=f"Ruta al archivo CSV del perfil de terreno (por defecto: {DEFAULT_PROFILE})",
+    )
+    parser.add_argument(
+        "--source",
+        type=str,
+        choices=["local", "api"],
+        default="local",
+        help="Fuente de datos del terreno (local o api).",
+    )
+    args = parser.parse_args()
+    if args.source == "api":
+        print("Error: La descarga por API (Etapa 11) aún no está implementada en este MVP (Etapa 8).")
+        print("Por favor, usa '--source local' (por defecto).")
+        sys.exit(1)
+    try:
+        terrain = load_terrain_csv(args.profile)
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo de perfil '{args.profile}'.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error al cargar el perfil de terreno: {e}")
+        sys.exit(1)
+    print(f"RadioLink LOS v1.1 - Iniciando con perfil: {args.profile}")
+    app = App(terrain)
+    # Según ARCH dice app.run(), pero en ui/app.py tenemos app.show(). 
+    # Llamamos a show() que levanta la ventana bloqueante de plt.show()
+    app.show()
 if __name__ == "__main__":
     main()
