@@ -69,12 +69,18 @@ def draw_terrain_panel(
     artists.line_mast_tx.set_data([d_tx, d_tx], [z_tx, H_tx])
     artists.line_mast_rx.set_data([d_rx, d_rx], [z_rx, H_rx])
     # --- Ajuste automático de ejes ---
-    y_min = min(terrain.elevation_m.min(), profile.z_eff_m.min())
-    h_max_a = max(profile.params.h_tx_m, profile.params.h_rx_m)
-    h_max_b = (max(profile_b.params.h_tx_m, profile_b.params.h_rx_m)
-               if profile_b is not None else 0.0)
-    top_y = float(np.max(profile.z_eff_m)) + max(h_max_a, h_max_b) + 20.0
-    ax.set_xlim(0, terrain.d_total_m)
+    profiles = (profile,) if profile_b is None else (profile, profile_b)
+    y_min = min(float(terrain.elevation_m.min()),
+                *(float(np.min(current.z_eff_m)) for current in profiles))
+    # Incluye todas las trazas visibles, no solo terreno + altura de mástil.
+    top_y = max(
+        float(np.max(values))
+        for current in profiles
+        for values in (current.z_eff_m, current.h_los_m,
+                       current.h_sup_m, current.h_60pct_m)
+    ) + 8.0
+    x_max = max(float(current.terrain.d_total_m) for current in profiles)
+    ax.set_xlim(0, x_max)
     ax.set_ylim(y_min - 5.0, top_y)
 
     # --- Obstáculo crítico ---

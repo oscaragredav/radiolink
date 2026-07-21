@@ -80,6 +80,7 @@ def on_toggle_raw_terrain(label: str, app: "App") -> None:
 
 def on_toggle_design_b(label: str, app: "App") -> None:
     app.show_design_b = not app.show_design_b
+    app._refresh_widget_modes()
     app._render(app.profile)
 
 def on_toggle_power_budget(label: str, app: "App") -> None:

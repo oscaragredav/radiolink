@@ -37,7 +37,7 @@ class WidgetAxes:
     ax_btn_v2: Axes
     ax_btn_v3: Axes
     ax_btn_api: Axes
-    ax_btn_mobile: Axes
+    ax_toggle_mobile: Axes
     ax_toggle_raw: Axes
     ax_toggle_design_b: Axes
     ax_toggle_power_budget: Axes
@@ -77,24 +77,27 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
     left = [_widget_axis(fig, [0.14, y, 0.20, h]) for y in ys]
     centre = [_widget_axis(fig, [0.48, y, 0.11, h]) for y in ys[:2]]
     return WidgetAxes(
-        *left, *centre,
-        _widget_axis(fig, [0.68, 0.155, 0.075, 0.036]),
-        _widget_axis(fig, [0.77, 0.155, 0.075, 0.036]),
-        _widget_axis(fig, [0.86, 0.155, 0.075, 0.036]),
-        _widget_axis(fig, [0.68, 0.127, 0.125, 0.024]),
-        _widget_axis(fig, [0.81, 0.127, 0.125, 0.024]),
-        _widget_axis(fig, [0.68, 0.068, 0.15, 0.050]),
-        _widget_axis(fig, [0.84, 0.068, 0.15, 0.050]),
-        _widget_axis(fig, [0.68, 0.010, 0.15, 0.050]),
-        _widget_axis(fig, [0.75, 0.190, 0.14, 0.018]),
-        _widget_axis(fig, [0.75, 0.153, 0.14, 0.018]),
-        _widget_axis(fig, [0.75, 0.116, 0.14, 0.018]),
-        _widget_axis(fig, [0.75, 0.079, 0.14, 0.018]),
-        # El modo móvil puede convivir con Budget Px. Sus sliders ocupan la
-        # columna central inferior para no solaparse con los de presupuesto.
-        _widget_axis(fig, [0.48, 0.099, 0.11, 0.018]),
-        _widget_axis(fig, [0.48, 0.062, 0.11, 0.018]),
-        _widget_axis(fig, [0.48, 0.025, 0.11, 0.018]),
+        ax_slider_freq=left[0], ax_slider_k=left[1],
+        ax_slider_htx=left[2], ax_slider_hrx=left[3],
+        ax_slider_htx_b=centre[0], ax_slider_hrx_b=centre[1],
+        # Zona derecha: presets arriba; opciones siempre visibles al costado.
+        ax_btn_v1=_widget_axis(fig, [0.68, 0.185, 0.060, 0.032]),
+        ax_btn_v2=_widget_axis(fig, [0.75, 0.185, 0.060, 0.032]),
+        ax_btn_v3=_widget_axis(fig, [0.82, 0.185, 0.060, 0.032]),
+        ax_btn_api=_widget_axis(fig, [0.89, 0.185, 0.095, 0.032]),
+        ax_toggle_mobile=_widget_axis(fig, [0.875, 0.057, 0.110, 0.032]),
+        ax_toggle_raw=_widget_axis(fig, [0.875, 0.018, 0.110, 0.032]),
+        ax_toggle_design_b=_widget_axis(fig, [0.875, 0.135, 0.110, 0.032]),
+        ax_toggle_power_budget=_widget_axis(fig, [0.875, 0.096, 0.110, 0.032]),
+        # Power Budget ocupa su propia subcolumna derecha.
+        ax_slider_ptx=_widget_axis(fig, [0.70, 0.137, 0.145, 0.016]),
+        ax_slider_gtx=_widget_axis(fig, [0.70, 0.104, 0.145, 0.016]),
+        ax_slider_grx=_widget_axis(fig, [0.70, 0.071, 0.145, 0.016]),
+        ax_slider_sensitivity=_widget_axis(fig, [0.70, 0.038, 0.145, 0.016]),
+        # Posiciones base del móvil; App las sube cuando Diseño B está OFF.
+        ax_slider_d_total=_widget_axis(fig, [0.48, 0.099, 0.11, 0.018]),
+        ax_slider_d_obs=_widget_axis(fig, [0.48, 0.062, 0.11, 0.018]),
+        ax_slider_z_obs=_widget_axis(fig, [0.48, 0.025, 0.11, 0.018]),
     )
 
 

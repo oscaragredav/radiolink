@@ -23,4 +23,6 @@ def update_diffraction_panel(ax: Axes, artists: DiffractionArtists,
     x_max = max(3.0, v_c + 0.4, v_cb + 0.4)
     update_diffraction_curve(artists, x_min, x_max)
     ax.set_xlim(x_min, x_max)
-    ax.set_ylim(min(-24.0, gd_c - 4.0, gd_cb - 4.0), 6.0)
+    y_min = min(-24.0, gd_c - 4.0, gd_cb - 4.0)
+    y_max = max(6.0, gd_c + 2.0, gd_cb + 2.0)
+    ax.set_ylim(y_min, y_max)

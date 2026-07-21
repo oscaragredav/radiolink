@@ -191,26 +191,26 @@ def test_sliders_sync_after_case_load():
     assert abs(app.params.h_tx_m - 14.64) < 1e-9
 
 
-def test_mobile_mode_deactivates_overlapping_hidden_widgets():
-    """Los controles ocultos no compiten por la captura del ratón."""
+def test_mobile_mode_keeps_independent_toggles_visible():
+    """Móvil solo activa sus sliders; no oculta ni bloquea otros toggles."""
     app = _make_app_lima()
 
     app._toggle_mobile_obstacle_mode()
 
     assert app.mobile_mode
-    assert app._btn_mobile.active
+    assert app._chk_mobile.active
     assert app._sl_d_total.active
     assert app._sl_d_obs.active
     assert app._sl_z_obs.active
-    assert not app._chk_raw.active
-    assert not app._chk_design_b.active
+    assert app._chk_raw.active
+    assert app._chk_design_b.active
     assert app._chk_power_budget.active
     assert not app._sl_ptx.active
 
     app._toggle_mobile_obstacle_mode()
 
     assert not app.mobile_mode
-    assert app._btn_mobile.active
+    assert app._chk_mobile.active
     assert not app._sl_d_total.active
     assert not app._sl_d_obs.active
     assert not app._sl_z_obs.active
@@ -249,5 +249,51 @@ def test_power_budget_and_mobile_mode_can_be_active_together():
     assert app._sl_d_total.active
     assert app._sl_d_obs.active
     assert app._sl_z_obs.active
-    assert app._btn_mobile.active
+    assert app._chk_mobile.active
     assert app._chk_power_budget.active
+
+
+def test_all_three_optional_modes_are_orthogonal():
+    """Las ocho combinaciones controlan únicamente sus propios sliders."""
+    from itertools import product
+
+    app = _make_app_lima()
+    wa = app._widget_axes
+    for design_b, budget, mobile in product((False, True), repeat=3):
+        app.show_design_b = design_b
+        app.show_power_budget = budget
+        app.mobile_mode = mobile
+        app._refresh_widget_modes()
+
+        assert app._sl_htx_b.active is design_b
+        assert app._sl_hrx_b.active is design_b
+        assert app._sl_ptx.active is budget
+        assert app._sl_sensitivity.active is budget
+        assert app._sl_d_total.active is mobile
+        assert app._sl_z_obs.active is mobile
+        for ax in (wa.ax_toggle_design_b, wa.ax_toggle_power_budget,
+                   wa.ax_toggle_mobile):
+            assert ax.get_visible()
+
+
+def test_combined_modes_render_budget_for_both_designs_on_mobile_terrain():
+    """B + Budget + Móvil alimenta tabla y gráficas con ambos perfiles."""
+    app = _make_app_lima()
+    app.show_power_budget = True
+    app._toggle_mobile_obstacle_mode()
+    app._refresh_widget_modes()
+    app._recompute()
+
+    assert app.show_design_b and app.show_power_budget and app.mobile_mode
+    assert app.profile.terrain.is_synthetic
+    assert app.profile_b.terrain.is_synthetic
+    assert app.profile.margin_db is not None
+    assert app.profile_b.margin_db is not None
+    assert app.profile.availability_pct is not None
+    assert app.profile_b.availability_pct is not None
+    assert app.terrain_artists.line_los_b.get_visible()
+    assert app.diffraction_artists.marker_v_critical_b.get_visible()
+    assert app.result_texts.table[(12, 1)].get_text().get_text() != "—"
+    assert app.result_texts.table[(12, 2)].get_text().get_text() != "—"
+    assert app.result_texts.table[(13, 1)].get_text().get_text() != "—"
+    assert app.result_texts.table[(13, 2)].get_text().get_text() != "—"

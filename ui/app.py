@@ -264,12 +264,7 @@ class App:
             ax=wa.ax_btn_api, label="Cargar API",
             color=COLOR_BTN_FACE, hovercolor="#434C5E",
         )
-        self._btn_mobile = Button(
-            ax=wa.ax_btn_mobile, label="Obstáculo Móvil",
-            color=COLOR_BTN_FACE, hovercolor="#434C5E",
-        )
-        for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api,
-                    self._btn_mobile):
+        for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api):
             btn.label.set_color(COLOR_WIDGET_TEXT)
             btn.label.set_fontsize(8)
         # ── Toggle terreno crudo ───────────────────────────────────────
@@ -285,8 +280,12 @@ class App:
             ax=wa.ax_toggle_power_budget, labels=["Budget Px"],
             actives=[self.show_power_budget]
         )
+        self._chk_mobile = CheckButtons(
+            ax=wa.ax_toggle_mobile, labels=["Obst. Móvil"],
+            actives=[self.mobile_mode]
+        )
         for checks in (self._chk_raw, self._chk_design_b,
-                       self._chk_power_budget):
+                       self._chk_power_budget, self._chk_mobile):
             for label in checks.labels:
                 label.set_color(COLOR_WIDGET_TEXT)
                 label.set_fontsize(8)
@@ -317,13 +316,13 @@ class App:
         self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
         self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
         self._btn_api.on_clicked(lambda e: on_load_api(e, self))
-        self._btn_mobile.on_clicked(
-            lambda e: on_toggle_mobile_obstacle(e, self)
-        )
         self._chk_raw.on_clicked(lambda lbl: on_toggle_raw_terrain(lbl, self))
         self._chk_design_b.on_clicked(lambda lbl: on_toggle_design_b(lbl, self))
         self._chk_power_budget.on_clicked(
             lambda lbl: on_toggle_power_budget(lbl, self)
+        )
+        self._chk_mobile.on_clicked(
+            lambda lbl: on_toggle_mobile_obstacle(lbl, self)
         )
         self._refresh_widget_modes()
         # Añadir etiquetas descriptivas sobre los sliders y botones
@@ -370,15 +369,8 @@ class App:
         self._refresh_widget_modes()
 
     def _refresh_widget_modes(self) -> None:
-        """Evita colisiones visuales e interactivas entre controles.
-
-        Ocultar un ``Axes`` no desactiva el widget de Matplotlib que contiene.
-        Como los controles de budget, móvil y presets reutilizan coordenadas,
-        los widgets ocultos deben quedar también inactivos para que no intenten
-        capturar el ratón junto con el control visible.
-        """
+        """Distribuye cada grupo sin acoplar los tres estados opcionales."""
         wa = self._widget_axes
-        budget_visible = self.show_power_budget
         budget_controls = (
             (wa.ax_slider_ptx, self._sl_ptx),
             (wa.ax_slider_gtx, self._sl_gtx),
@@ -386,8 +378,16 @@ class App:
             (wa.ax_slider_sensitivity, self._sl_sensitivity),
         )
         for ax, widget in budget_controls:
-            ax.set_visible(budget_visible)
-            widget.active = budget_visible
+            ax.set_visible(self.show_power_budget)
+            widget.active = self.show_power_budget
+
+        design_b_controls = (
+            (wa.ax_slider_htx_b, self._sl_htx_b),
+            (wa.ax_slider_hrx_b, self._sl_hrx_b),
+        )
+        for ax, widget in design_b_controls:
+            ax.set_visible(self.show_design_b)
+            widget.active = self.show_design_b
 
         mobile_controls = (
             (wa.ax_slider_d_total, self._sl_d_total),
@@ -398,34 +398,26 @@ class App:
             ax.set_visible(self.mobile_mode)
             widget.active = self.mobile_mode
 
-        normal = not self.show_power_budget and not self.mobile_mode
-        normal_controls = (
-            (wa.ax_btn_v1, self._btn_v1),
-            (wa.ax_btn_v2, self._btn_v2),
-            (wa.ax_btn_v3, self._btn_v3),
-            (wa.ax_btn_api, self._btn_api),
+        # Móvil usa la parte alta del centro si B está apagado, y la parte
+        # inferior si ambos están encendidos.
+        mobile_ys = ((0.099, 0.062, 0.025) if self.show_design_b
+                     else (0.185, 0.142, 0.099))
+        for ax, y in zip((wa.ax_slider_d_total, wa.ax_slider_d_obs,
+                          wa.ax_slider_z_obs), mobile_ys):
+            ax.set_position([0.48, y, 0.11, 0.018])
+
+        # Presets y opciones nunca desaparecen; solo los sliders condicionados.
+        always_on = (
+            (wa.ax_btn_v1, self._btn_v1), (wa.ax_btn_v2, self._btn_v2),
+            (wa.ax_btn_v3, self._btn_v3), (wa.ax_btn_api, self._btn_api),
             (wa.ax_toggle_raw, self._chk_raw),
             (wa.ax_toggle_design_b, self._chk_design_b),
+            (wa.ax_toggle_power_budget, self._chk_power_budget),
+            (wa.ax_toggle_mobile, self._chk_mobile),
         )
-        for ax, widget in normal_controls:
-            ax.set_visible(normal)
-            # CheckButtons.set_active() cambia una casilla por índice; la
-            # propiedad común ``active`` habilita/deshabilita todo el widget.
-            widget.active = normal
-
-        # Ambos modos son compatibles: el botón móvil y Budget Px permanecen
-        # disponibles. Cuando hay controles extra, el botón se mueve a una
-        # zona que no se superpone con sliders ni checkboxes.
-        compact_mobile_button = self.show_power_budget or self.mobile_mode
-        mobile_button_box = ([0.60, 0.068, 0.065, 0.035]
-                             if compact_mobile_button
-                             else [0.81, 0.127, 0.125, 0.024])
-        wa.ax_btn_mobile.set_position(mobile_button_box)
-        wa.ax_btn_mobile.set_visible(True)
-        self._btn_mobile.active = True
-
-        wa.ax_toggle_power_budget.set_visible(True)
-        self._chk_power_budget.active = True
+        for ax, widget in always_on:
+            ax.set_visible(True)
+            widget.active = True
         self.fig.canvas.draw_idle()
 
     def _toggle_mobile_obstacle_mode(self) -> None:
@@ -437,8 +429,6 @@ class App:
             if self._terrain_before_mobile is not None:
                 self.terrain, self.params, self.params_b = self._terrain_before_mobile
             self._terrain_before_mobile = None
-            self._btn_mobile.label.set_text("Obstáculo Móvil")
-            self._widget_axes.ax_btn_mobile.set_position([0.81, 0.127, 0.125, 0.024])
             self._refresh_widget_modes()
             self._recompute()
             return
@@ -456,7 +446,6 @@ class App:
         # Alturas del preset plano despejado: con z_obs=0 el core entrega Ld=0.
         self.params = replace(self.params, h_tx_m=10.0, h_rx_m=10.0, K=1e12)
         self.params_b = replace(self.params_b, h_tx_m=10.0, h_rx_m=10.0, K=1e12)
-        self._btn_mobile.label.set_text("Salir Móvil")
         self._refresh_widget_modes()
         self._update_mobile_terrain(d_total_km=10.0, d_obs_km=5.0,
                                     z_obs_m=0.0)
