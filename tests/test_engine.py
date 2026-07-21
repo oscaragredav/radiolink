@@ -68,7 +68,7 @@ def assert_profile_invariants(profile):
     assert profile.l_d_db >= 0.0
     assert profile.l_fs_db > 0.0
 
-
+#caso tierra plana k infinito
 def test_case_v1_flat_earth():
     terrain, params = case_flat_earth()
     profile = compute_link_profile(params, terrain)
@@ -87,7 +87,7 @@ def test_case_v1_flat_earth():
     l_d = profile.l_d_db
     assert l_d < 1.0
 
-#TODO falta evaluar estas pruebas
+#caso tierra plana con terreno elevado a 2000m[80], k infinito
 def test_case_v2_edge_on_los():
     terrain, params = case_edge_on_los()
     profile = compute_link_profile(params, terrain)
@@ -106,7 +106,7 @@ def test_case_v2_edge_on_los():
     tolerance_ld = 0.01
     assert error_ld < tolerance_ld
 
-
+#caso lima: terreno plano considerando curvatura de la tierra
 def test_case_v3_lima_internal_consistency():
     terrain, params = case_lima()
     profile = compute_link_profile(params, terrain)
