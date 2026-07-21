@@ -1,16 +1,21 @@
 """
 RadioLink LOS — Punto de entrada principal.
+
 Versión: 1.1
 Referencia: ARCH v1.1, §4 (main.py).
+
 Punto de entrada de la aplicación. Parsea argumentos de línea de comandos
 y lanza la interfaz gráfica.
 """
 
 import argparse
 import sys
+
 from config.defaults import DEFAULT_PROFILE
 from data.loader import load_terrain_csv
 from ui.app import App
+
+
 def main() -> None:
     """Punto de entrada del evaluador de radioenlace LOS."""
     parser = argparse.ArgumentParser(
@@ -29,11 +34,15 @@ def main() -> None:
         default="local",
         help="Fuente de datos del terreno (local o api).",
     )
+
     args = parser.parse_args()
+
     if args.source == "api":
         print("Error: La descarga por API (Etapa 11) aún no está implementada en este MVP (Etapa 8).")
         print("Por favor, usa '--source local' (por defecto).")
         sys.exit(1)
+
+
     try:
         terrain = load_terrain_csv(args.profile)
     except FileNotFoundError:
@@ -44,8 +53,8 @@ def main() -> None:
         sys.exit(1)
     print(f"RadioLink LOS v1.1 - Iniciando con perfil: {args.profile}")
     app = App(terrain)
-    # Según ARCH dice app.run(), pero en ui/app.py tenemos app.show(). 
-    # Llamamos a show() que levanta la ventana bloqueante de plt.show()
     app.show()
+
+
 if __name__ == "__main__":
     main()

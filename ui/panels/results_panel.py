@@ -1,34 +1,22 @@
 """
 Panel de resultados: tabla numérica con los valores clave del LinkProfile.
-
 No recalcula física. Solo formatea y muestra los escalares de LinkProfile.
-
 Referencia: ARCH v1.1, §7.
 """
-
 from __future__ import annotations
-
 from matplotlib.axes import Axes
-
 from models.profile import LinkProfile
-
-
 # Líneas de texto precreadas (lista de Text)
 _NUM_LINES = 14
-
-
 def build_results_panel(ax: Axes) -> list:
     """Crea las líneas de texto del panel de resultados.
-
     Args:
         ax: Axes del panel de resultados.
-
     Returns:
         Lista de Text objects (uno por línea de la tabla).
     """
     ax.set_axis_off()
     ax.set_title("Resultados", color="#C9D1D9", fontsize=9, pad=6)
-
     texts = []
     for i in range(_NUM_LINES):
         t = ax.text(
@@ -43,27 +31,21 @@ def build_results_panel(ax: Axes) -> list:
             fontfamily="monospace",
         )
         texts.append(t)
-
     return texts
-
-
 def update_results_panel(
     texts: list,
     profile: LinkProfile,
 ) -> None:
     """Actualiza el panel de resultados con los valores del LinkProfile.
-
     Args:
         texts:   Lista de Text creados por build_results_panel().
         profile: LinkProfile producido por compute_link_profile().
     """
     p = profile.params
     t = profile.terrain
-
     # Construir tabla de resultados
     f_ghz = p.f_hz / 1e9
     d_km = t.d_total_m / 1e3
-
     rows = [
         ("── Parámetros ──────────────", ""),
         ("Frecuencia",                  f"{f_ghz:.3f} GHz"),
@@ -82,7 +64,6 @@ def update_results_panel(
         ("Disponibilidad",              "—" if profile.availability_pct is None
                                         else f"{profile.availability_pct:.4f} %"),
     ]
-
     # Rellenar textos con las filas disponibles
     for i, text_obj in enumerate(texts):
         if i < len(rows):
@@ -92,7 +73,6 @@ def update_results_panel(
             else:
                 line = label  # encabezado de sección
             text_obj.set_text(line)
-
             # Diferenciar encabezados
             if value == "":
                 text_obj.set_color("#58A6FF")

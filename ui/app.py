@@ -1,13 +1,15 @@
 """
 Controlador principal de la aplicación de visualización de radioenlace.
 
-Versión estática (Etapa 7): construye la figura, los artistas y renderiza
-el perfil inicial sin widgets interactivos.
+Etapa 8: versión interactiva con sliders (frecuencia, K, hTx, hRx),
+toggle de terreno crudo/efectivo y botones de carga de casos V-1/V-2/V-3.
 
-Referencia: ARCH v1.1, §7.
+Referencia: ARCH v1.1, §7; IMPL v1.1, §Etapa 8.
 
-La UI no recalcula física. Recibe un TerrainData y un LinkParams,
-llama al motor una vez y actualiza todos los paneles con el LinkProfile.
+Reglas:
+  - La UI no recalcula física directamente; delega en core.engine.
+  - Los callbacks usan dataclasses.replace(); nunca mutan params directamente.
+  - El toggle de terreno solo modifica visibilidad de artistas; no recalcula.
 """
 
 from __future__ import annotations
@@ -15,29 +17,60 @@ from __future__ import annotations
 from typing import Optional
 
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.widgets import Slider, Button, CheckButtons
 
+from core.atmosphere import gradient_from_k
 from core.engine import compute_link_profile
 from models.params import LinkParams, PowerBudgetParams
 from models.terrain import TerrainData
 from models.profile import LinkProfile
-from ui.layout import build_figure
-from ui.artists import build_terrain_artists, build_diffraction_artists, TerrainArtists, DiffractionArtists
+
+from ui.layout import (
+    build_figure,
+    build_widget_axes,
+    COLOR_SLIDER_COLOR,
+    COLOR_WIDGET_TEXT,
+    COLOR_BTN_FACE,
+)
+from ui.artists import (
+    build_terrain_artists,
+    build_diffraction_artists,
+    TerrainArtists,
+    DiffractionArtists,
+)
 from ui.panels.terrain_panel import draw_terrain_panel
 from ui.panels.diffraction_panel import update_diffraction_panel
 from ui.panels.results_panel import build_results_panel, update_results_panel
+from ui.callbacks import (
+    on_freq_changed,
+    on_k_changed,
+    on_htx_changed,
+    on_hrx_changed,
+    on_toggle_raw_terrain,
+    on_load_case_v1,
+    on_load_case_v2,
+    on_load_case_v3,
+)
 
 
 class App:
-    """Controlador de la figura matplotlib.
+    """Controlador de la figura matplotlib con widgets interactivos.
 
-    Etapa 7: versión estática sin widgets.
-
+    Atributos públicos (modificados por callbacks vía dataclasses.replace):
+        terrain:   Datos del perfil de terreno actual.
+        params:    Parámetros del enlace actuales (LinkParams inmutable).
+        pb_params: Parámetros de power budget (opcional).
+        profile:   Último LinkProfile calculado.
+        text_dndh: Text que muestra dN/dh actualizado por el slider de K.
+    
     Args:
-        terrain:    Datos del perfil de terreno.
-        params:     Parámetros del enlace (opcional; usa defaults de Lima si None).
-        pb_params:  Parámetros de power budget (opcional).
+        terrain:   Datos del perfil de terreno.
+        params:    Parámetros del enlace (opcional; usa defaults si None).
+        pb_params: Parámetros de power budget (opcional).
     """
+
 
     def __init__(
         self,
@@ -45,7 +78,7 @@ class App:
         params: Optional[LinkParams] = None,
         pb_params: Optional[PowerBudgetParams] = None,
     ) -> None:
-        # Parámetros por defecto si no se proporcionan
+          # Parámetros por defecto
         if params is None:
             params = LinkParams(
                 f_hz=7e9,
@@ -57,49 +90,156 @@ class App:
         self.terrain = terrain
         self.params = params
         self.pb_params = pb_params
+        self.text_dndh: Optional[object] = None  # Text de dN/dh (etapa 8)
 
-        # Construir figura y ejes
+        # ── Figura y paneles de datos ──────────────────────────────────
         self.fig, self.ax_terrain, self.ax_diffraction, self.ax_results = (
             build_figure()
         )
-
-        # Crear artistas (una sola vez)
+        # ── Artistas (creados una sola vez) ───────────────────────────
         self.terrain_artists: TerrainArtists = build_terrain_artists(
             self.ax_terrain
         )
-        self.diffraction_artists: DiffractionArtists = (
-            build_diffraction_artists(self.ax_diffraction)
+        self.diffraction_artists: DiffractionArtists = build_diffraction_artists(
+            self.ax_diffraction
         )
         self.result_texts = build_results_panel(self.ax_results)
-
-        # Calcular perfil y dibujar
+        
+        # ── Widgets interactivos ──────────────────────────────────────
+        self._widget_axes = build_widget_axes(self.fig)
+        self._build_widgets()
+        
+        # ── Calcular perfil inicial y renderizar ──────────────────────
         self.profile: LinkProfile = compute_link_profile(
             self.params, self.terrain, self.pb_params
         )
         self._render(self.profile)
-
-    # ------------------------------------------------------------------
+        self._sync_sliders_to_params()
+    
+    #  ------------------------------------------------------------------
     # API pública
     # ------------------------------------------------------------------
-
+    
     def show(self) -> None:
-        """Muestra la figura (bloquea si el backend lo requiere)."""
-        import matplotlib.pyplot as plt
+        """Muestra la figura (bloquea hasta que se cierre la ventana)."""
         plt.show()
-
+    
     def save(self, path: str, dpi: int = 140) -> None:
         """Guarda la figura como imagen.
-
         Args:
-            path: Ruta del archivo de salida (png, pdf, svg…).
+            path: Ruta del archivo (png, pdf, svg…).
             dpi:  Resolución de exportación.
         """
-        self.fig.savefig(path, dpi=dpi, bbox_inches="tight",
-                         facecolor=self.fig.get_facecolor())
+        self.fig.savefig(
+            path, dpi=dpi, bbox_inches="tight",
+            facecolor=self.fig.get_facecolor(),
+        )
 
     # ------------------------------------------------------------------
     # Métodos internos
     # ------------------------------------------------------------------
+    
+    def _build_widgets(self) -> None:
+        """Instancia y conecta todos los widgets."""
+        wa = self._widget_axes
+        # ── Sliders ────────────────────────────────────────────────────
+        self._sl_freq = Slider(
+            ax=wa.ax_slider_freq,
+            label="Frec [GHz]",
+            valmin=0.1,
+            valmax=30.0,
+            valinit=self.params.f_hz / 1e9,
+            color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_k = Slider(
+            ax=wa.ax_slider_k,
+            label="K [-]",
+            valmin=0.5,
+            valmax=3.0,
+            valinit=self.params.K,
+            color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_htx = Slider(
+            ax=wa.ax_slider_htx,
+            label="h Tx [m]",
+            valmin=1.0,
+            valmax=100.0,
+            valinit=self.params.h_tx_m,
+            color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_hrx = Slider(
+            ax=wa.ax_slider_hrx,
+            label="h Rx [m]",
+            valmin=1.0,
+            valmax=100.0,
+            valinit=self.params.h_rx_m,
+            color=COLOR_SLIDER_COLOR,
+        )
+        # Estilo de los sliders
+        for sl in (self._sl_freq, self._sl_k, self._sl_htx, self._sl_hrx):
+            sl.label.set_color(COLOR_WIDGET_TEXT)
+            sl.valtext.set_color(COLOR_WIDGET_TEXT)
+        # ── Texto de dN/dh (actualizado por slider K) ─────────────────
+        dndh_init = gradient_from_k(self.params.K)
+        self.text_dndh = self.fig.text(
+            0.25, wa.ax_slider_freq.get_position().y1 + 0.005,
+            f"dN/dh = {dndh_init:.1f} N/km",
+            color="#8B949E", fontsize=7.5, ha="left",
+        )
+        # ── Botones de casos ───────────────────────────────────────────
+        self._btn_v1 = Button(
+            ax=wa.ax_btn_v1, label="V-1",
+            color=COLOR_BTN_FACE, hovercolor="#2EA043",
+        )
+        self._btn_v2 = Button(
+            ax=wa.ax_btn_v2, label="V-2",
+            color=COLOR_BTN_FACE, hovercolor="#2EA043",
+        )
+        self._btn_v3 = Button(
+            ax=wa.ax_btn_v3, label="Lima",
+            color=COLOR_BTN_FACE, hovercolor="#2EA043",
+        )
+        for btn in (self._btn_v1, self._btn_v2, self._btn_v3):
+            btn.label.set_color(COLOR_WIDGET_TEXT)
+            btn.label.set_fontsize(8)
+        # ── Toggle terreno crudo ───────────────────────────────────────
+        self._chk_raw = CheckButtons(
+            ax=wa.ax_toggle_raw,
+            labels=["Terreno crudo"],
+            actives=[True],
+        )
+        try:
+            # matplotlib >= 3.9 usa set_check_props (solo si acepta facecolor)
+            self._chk_raw.set_check_props(facecolor=COLOR_SLIDER_COLOR)
+        except (AttributeError, TypeError):
+            pass
+        # ── Conexión de callbacks ──────────────────────────────────────
+        self._sl_freq.on_changed(lambda v: on_freq_changed(v, self))
+        self._sl_k.on_changed(lambda v: on_k_changed(v, self))
+        self._sl_htx.on_changed(lambda v: on_htx_changed(v, self))
+        self._sl_hrx.on_changed(lambda v: on_hrx_changed(v, self))
+        self._btn_v1.on_clicked(lambda e: on_load_case_v1(e, self))
+        self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
+        self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
+        self._chk_raw.on_clicked(lambda lbl: on_toggle_raw_terrain(lbl, self))
+        # Añadir etiquetas descriptivas sobre los sliders y botones
+        self._add_widget_labels()
+    def _add_widget_labels(self) -> None:
+        """Añade textos decorativos a la zona de widgets."""
+        wa = self._widget_axes
+        y_section = wa.ax_slider_freq.get_position().y1 + 0.005
+        self.fig.text(
+            0.08, y_section,
+            "Parámetros de diseño",
+            color="#58A6FF", fontsize=8, fontweight="bold",
+        )
+        y_btns = wa.ax_btn_v1.get_position().y1 + 0.005
+        self.fig.text(
+            _btn_label_x(wa),
+            y_btns,
+            "Casos de validación",
+            color="#58A6FF", fontsize=8, fontweight="bold",
+        )
 
     def _render(self, profile: LinkProfile) -> None:
         """Actualiza todos los paneles con el perfil dado."""
@@ -109,13 +249,34 @@ class App:
         )
         update_results_panel(self.result_texts, profile)
         self.fig.canvas.draw_idle()
-
+    
     def _recompute(self) -> None:
-        """Recalcula el perfil y actualiza la figura.
+        """Recalcula el perfil con los parámetros actuales y actualiza la UI.
 
-        Punto de entrada para los callbacks de la Etapa 8.
+        Llamado por todos los callbacks de widgets.
         """
         self.profile = compute_link_profile(
             self.params, self.terrain, self.pb_params
         )
         self._render(self.profile)
+
+    def _sync_sliders_to_params(self) -> None:
+        """Sincroniza los sliders con los valores actuales de self.params.
+        Útil después de cargar un caso de validación: los sliders se
+        mueven a los nuevos valores sin disparar callbacks.
+        """
+        self._sl_freq.set_val(self.params.f_hz / 1e9)
+        self._sl_k.set_val(self.params.K)
+        self._sl_htx.set_val(self.params.h_tx_m)
+        self._sl_hrx.set_val(self.params.h_rx_m)
+        if self.text_dndh is not None:
+            dndh = gradient_from_k(self.params.K)
+            self.text_dndh.set_text(f"dN/dh = {dndh:.1f} N/km")
+
+def _btn_label_x(wa) -> float:
+    """Posición X del label de botones."""
+    try:
+        return wa.ax_btn_v1.get_position().x0
+    except Exception:
+        return 0.67
+

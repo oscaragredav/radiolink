@@ -20,5 +20,5 @@ DEFAULT_K: float = 4 / 3
 DEFAULT_SPACING_M: float = 50.0
 
 # Ruta del perfil por defecto
-DEFAULT_PROFILE: str = "data/profiles/lima1.csv" #Atocongo-San Bartolo
+DEFAULT_PROFILE: str = "data/profiles/lima_atocongo.csv" #Atocongo-San Bartolo
 #TODO: Agregar perfil lima2.csv (La Molina-Chosica)
