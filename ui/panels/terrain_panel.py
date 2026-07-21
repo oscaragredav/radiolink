@@ -69,13 +69,15 @@ def draw_terrain_panel(
     artists.line_mast_tx.set_data([d_tx, d_tx], [z_tx, H_tx])
     artists.line_mast_rx.set_data([d_rx, d_rx], [z_rx, H_rx])
     # --- Ajuste automático de ejes ---
-    y_min = min(terrain.elevation_m.min(), profile.z_eff_m.min()) - 10
-    y_max = max(
+    y_base_min = min(terrain.elevation_m.min(), profile.z_eff_m.min())
+    y_base_max = max(
         profile.h_sup_m.max(),
         profile.h_los_m.max(),
         H_tx, H_rx,
-    ) + 20
-    ax.set_xlim(d_m[0], d_m[-1])
+    )
+    y_min = y_base_min - 10
+    y_max = y_base_max + 20
+    ax.set_xlim(0, terrain.d_total_m)
     ax.set_ylim(y_min, y_max)
 
     # --- Obstáculo crítico ---

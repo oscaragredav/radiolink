@@ -128,3 +128,7 @@ def on_load_case_v3(event, app: "App") -> None:
     app.params_b = replace(params)
     app._recompute()
     app._sync_sliders_to_params()
+
+def on_load_api(event, app: "App") -> None:
+    """Abre el diálogo dedicado de coordenadas para el perfil remoto."""
+    app.open_api_dialog()

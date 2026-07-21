@@ -54,6 +54,7 @@ from ui.callbacks import (
     on_load_case_v3,
     on_htx_b_changed, on_hrx_b_changed, on_toggle_design_b,
     on_toggle_power_budget,
+    on_load_api,
 )
 
 
@@ -220,7 +221,11 @@ class App:
             ax=wa.ax_btn_v3, label="Lima",
             color=COLOR_BTN_FACE, hovercolor="#2EA043",
         )
-        for btn in (self._btn_v1, self._btn_v2, self._btn_v3):
+        self._btn_api = Button(
+            ax=wa.ax_btn_api, label="Cargar API",
+            color="#1F6FEB", hovercolor="#388BFD",
+        )
+        for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api):
             btn.label.set_color(COLOR_WIDGET_TEXT)
             btn.label.set_fontsize(8)
         # ── Toggle terreno crudo ───────────────────────────────────────
@@ -251,6 +256,7 @@ class App:
         self._btn_v1.on_clicked(lambda e: on_load_case_v1(e, self))
         self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
         self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
+        self._btn_api.on_clicked(lambda e: on_load_api(e, self))
         self._chk_raw.on_clicked(lambda lbl: on_toggle_raw_terrain(lbl, self))
         self._chk_design_b.on_clicked(lambda lbl: on_toggle_design_b(lbl, self))
         self._chk_power_budget.on_clicked(
@@ -294,6 +300,72 @@ class App:
     def _active_pb_params(self) -> Optional[PowerBudgetParams]:
         """Budget configurado cuando el checkbox está activo."""
         return self.pb_params if self.show_power_budget else None
+
+    def load_api_profile(self, tx_lat: float, tx_lon: float,
+                         rx_lat: float, rx_lon: float) -> bool:
+        """Descarga y aplica un perfil; conserva el actual ante cualquier error."""
+        from data.api import TerrainAPIError, fetch_terrain_profile
+
+        old_title = self.ax_terrain.get_title()
+        self.ax_terrain.set_title("Descargando perfil topográfico...",
+                                  color="#D29922")
+        self.fig.canvas.draw_idle()
+        try:
+            self.fig.canvas.flush_events()
+        except NotImplementedError:
+            pass
+        try:
+            terrain = fetch_terrain_profile(tx_lat, tx_lon, rx_lat, rx_lon)
+        except (TerrainAPIError, Exception):
+            self.ax_terrain.set_title(old_title, color="#C9D1D9")
+            self.ax_results.set_title("Error: No se pudo conectar a la API",
+                                      color="#F85149", fontsize=9, pad=6)
+            self.fig.canvas.draw_idle()
+            return False
+
+        self.terrain = terrain
+        self.ax_terrain.set_title(old_title, color="#C9D1D9")
+        self.ax_results.set_title("Resultados", color="#C9D1D9", fontsize=9, pad=6)
+        self._recompute()
+        return True
+
+    def open_api_dialog(self) -> None:
+        """Solicita Tx/Rx en una ventana compacta, fuera de la figura."""
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+        except Exception:
+            self.ax_results.set_title("Error: No se pudo abrir el diálogo API",
+                                      color="#F85149", fontsize=9, pad=6)
+            self.fig.canvas.draw_idle()
+            return
+
+        root.title("Cargar perfil topográfico")
+        root.resizable(False, False)
+        defaults = (-12.0464, -77.0428, -12.1211, -77.0297)
+        labels = ("Tx Lat", "Tx Lon", "Rx Lat", "Rx Lon")
+        entries = []
+        for row, (label, value) in enumerate(zip(labels, defaults)):
+            tk.Label(root, text=label).grid(row=row, column=0, padx=8, pady=3,
+                                            sticky="e")
+            entry = tk.Entry(root, width=15)
+            entry.insert(0, str(value))
+            entry.grid(row=row, column=1, padx=8, pady=3)
+            entries.append(entry)
+
+        def submit() -> None:
+            try:
+                coords = [float(entry.get()) for entry in entries]
+            except ValueError:
+                messagebox.showerror("Coordenadas", "Ingrese cuatro números válidos")
+                return
+            root.destroy()
+            self.load_api_profile(*coords)
+
+        tk.Button(root, text="Descargar", command=submit).grid(
+            row=4, column=0, columnspan=2, pady=8)
+        root.mainloop()
 
     def _sync_sliders_to_params(self) -> None:
         """Sincroniza los sliders con los valores actuales de self.params.

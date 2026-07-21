@@ -35,6 +35,7 @@ class WidgetAxes:
     ax_btn_v1: Axes
     ax_btn_v2: Axes
     ax_btn_v3: Axes
+    ax_btn_api: Axes
     ax_toggle_raw: Axes
     ax_toggle_design_b: Axes
     ax_toggle_power_budget: Axes
@@ -68,6 +69,7 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
         _widget_axis(fig, [0.68, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.77, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.86, 0.155, 0.075, 0.036]),
+        _widget_axis(fig, [0.68, 0.127, 0.255, 0.024]),
         _widget_axis(fig, [0.68, 0.075, 0.115, 0.050]),
         _widget_axis(fig, [0.80, 0.075, 0.065, 0.050]),
         _widget_axis(fig, [0.87, 0.075, 0.080, 0.050]),
