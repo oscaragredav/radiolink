@@ -7,7 +7,7 @@ from __future__ import annotations
 from matplotlib.axes import Axes
 from models.profile import LinkProfile
 # Líneas de texto precreadas (lista de Text)
-_NUM_LINES = 14
+_NUM_LINES = 16
 def build_results_panel(ax: Axes) -> list:
     """Crea las líneas de texto del panel de resultados.
     Args:
@@ -43,6 +43,12 @@ def update_results_panel(
     """
     p = profile.params
     t = profile.terrain
+    idx = profile.idx_critical
+    c_los = profile.c_los_m[idx]
+    c_ffz = profile.c_ffz_m[idx]
+    is_clear = (profile.l_d_db == 0.0) or (profile.v_critical <= -0.78)
+    status_str = " (Despejado)" if is_clear else ""
+
     # Construir tabla de resultados
     f_ghz = p.f_hz / 1e9
     d_km = t.d_total_m / 1e3
@@ -55,8 +61,10 @@ def update_results_panel(
         ("h Rx",                        f"{p.h_rx_m:.2f} m"),
         ("── Difracción ──────────────", ""),
         ("v crítico",                   f"{profile.v_critical:.4f}"),
+        ("C_LOS",                       f"{c_los:+.2f} m"),
+        ("C_FFZ",                       f"{c_ffz:+.2f} m"),
         ("Gd(v)",                       f"{profile.g_d_db:.4f} dB"),
-        ("Ld(v)",                       f"{profile.l_d_db:.4f} dB"),
+        ("Ld(v)",                       f"{profile.l_d_db:.4f} dB{status_str}"),
         ("── Enlace ──────────────────", ""),
         ("Lfs",                         f"{profile.l_fs_db:.2f} dB"),
         ("Prx (sin budget)",            "—" if profile.p_rx_dbm is None

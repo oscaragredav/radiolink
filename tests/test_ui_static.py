@@ -132,6 +132,45 @@ def test_ui_module_does_not_import_physical_functions(ui_module):
         assert fn_name not in source_globals, (
             f"{ui_module} importa la función física '{fn_name}' directamente de core/"
         )
+
+# ---------------------------------------------------------------------------
+# F-7.7  Anotación de obstáculo crítico (Mejoras visuales)
+# ---------------------------------------------------------------------------
+def test_obstacle_annotation_and_marker_position():
+    """El marcador se posiciona en el eje X inferior y el texto incluye Elev: y (Despejado) cuando corresponde."""
+    from ui.app import App
+    from validation.cases import case_lima, case_edge_on_los
+
+    # Caso V-2 (Edge on LOS): v ≈ 0, Ld ≈ 6.02 dB -> NO Despejado
+    terrain_v2, params_v2 = case_edge_on_los()
+    app_v2 = App(terrain_v2, params_v2)
+    
+    y_min, _ = app_v2.ax_terrain.get_ylim()
+    marker = app_v2.terrain_artists.marker_obstacle
+    ydata = marker.get_xdata(), marker.get_ydata()
+    assert abs(float(ydata[1][0]) - (y_min + 2)) < 1e-1
+
+    text_v2 = app_v2.terrain_artists.text_obstacle.get_text()
+    z_obs_v2 = app_v2.profile.z_eff_m[app_v2.profile.idx_critical]
+    c_los_v2 = app_v2.profile.c_los_m[app_v2.profile.idx_critical]
+    c_ffz_v2 = app_v2.profile.c_ffz_m[app_v2.profile.idx_critical]
+
+    assert f"Elev: {z_obs_v2:.1f} m" in text_v2
+    assert f"C_LOS: {c_los_v2:+.2f} m | C_FFZ: {c_ffz_v2:+.2f} m" in text_v2
+    assert "(Despejado)" not in text_v2
+
+    # Caso Lima: v <= -0.78 / Ld == 0 -> SI Despejado
+    terrain_lima, params_lima = case_lima()
+    app_lima = App(terrain_lima, params_lima)
+    
+    text_lima = app_lima.terrain_artists.text_obstacle.get_text()
+    assert "(Despejado)" in text_lima
+
+    # Verificar que el panel de resultados incluye C_LOS y C_FFZ
+    result_texts = [t.get_text() for t in app_v2.result_texts]
+    results_str = "\n".join(result_texts)
+    assert "C_LOS" in results_str
+    assert "C_FFZ" in results_str
 # ---------------------------------------------------------------------------
 # Extras: verificar que el perfil cumple invariantes (integración)
 # ---------------------------------------------------------------------------

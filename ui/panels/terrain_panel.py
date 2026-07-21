@@ -67,16 +67,6 @@ def draw_terrain_panel(
     d_rx = d_m[-1]
     artists.line_mast_tx.set_data([d_tx, d_tx], [z_tx, H_tx])
     artists.line_mast_rx.set_data([d_rx, d_rx], [z_rx, H_rx])
-    # --- Obstáculo crítico ---
-    idx = profile.idx_critical
-    d_obs = d_m[idx]
-    z_obs = profile.z_eff_m[idx]
-    artists.marker_obstacle.set_data([d_obs], [z_obs])
-    artists.text_obstacle.set_position((d_obs + d_m[-1] * 0.01, z_obs + 2))
-    artists.text_obstacle.set_text(
-        f"v={profile.v_critical:.3f}\nLd={profile.l_d_db:.2f} dB"
-    )
-    artists.text_obstacle.set_visible(True)
     # --- Ajuste automático de ejes ---
     y_min = min(terrain.elevation_m.min(), profile.z_eff_m.min()) - 10
     y_max = max(
@@ -86,3 +76,23 @@ def draw_terrain_panel(
     ) + 20
     ax.set_xlim(d_m[0], d_m[-1])
     ax.set_ylim(y_min, y_max)
+
+    # --- Obstáculo crítico ---
+    idx = profile.idx_critical
+    d_obs = d_m[idx]
+    z_obs = profile.z_eff_m[idx]
+    c_los = profile.c_los_m[idx]
+    c_ffz = profile.c_ffz_m[idx]
+
+    artists.marker_obstacle.set_data([d_obs], [y_min + 2])
+    artists.text_obstacle.set_position((d_obs + d_m[-1] * 0.01, y_min + 2))
+    
+    is_clear = (profile.l_d_db == 0.0) or (profile.v_critical <= -0.78)
+    status = " (Despejado)" if is_clear else ""
+    artists.text_obstacle.set_text(
+        f"Elev: {z_obs:.1f} m\n"
+        f"C_LOS: {c_los:+.2f} m | C_FFZ: {c_ffz:+.2f} m\n"
+        f"v={profile.v_critical:.3f}\n"
+        f"Ld={profile.l_d_db:.2f} dB{status}"
+    )
+    artists.text_obstacle.set_visible(True)
