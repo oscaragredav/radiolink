@@ -223,7 +223,7 @@ class App:
         )
         self._btn_api = Button(
             ax=wa.ax_btn_api, label="Cargar API",
-            color="#1F6FEB", hovercolor="#388BFD",
+            color=COLOR_BTN_FACE, hovercolor="#434C5E",
         )
         for btn in (self._btn_v1, self._btn_v2, self._btn_v3, self._btn_api):
             btn.label.set_color(COLOR_WIDGET_TEXT)
@@ -231,16 +231,21 @@ class App:
         # ── Toggle terreno crudo ───────────────────────────────────────
         self._chk_raw = CheckButtons(
             ax=wa.ax_toggle_raw,
-            labels=["Terreno crudo"],
+            labels=["Terreno s/K"],
             actives=[True],
         )
         self._chk_design_b = CheckButtons(
             ax=wa.ax_toggle_design_b, labels=["Diseño B"], actives=[True]
         )
         self._chk_power_budget = CheckButtons(
-            ax=wa.ax_toggle_power_budget, labels=["Power Budget"],
+            ax=wa.ax_toggle_power_budget, labels=["Budget Px"],
             actives=[self.show_power_budget]
         )
+        for checks in (self._chk_raw, self._chk_design_b,
+                       self._chk_power_budget):
+            for label in checks.labels:
+                label.set_color(COLOR_WIDGET_TEXT)
+                label.set_fontsize(8)
         try:
             # matplotlib >= 3.9 usa set_check_props (solo si acepta facecolor)
             self._chk_raw.set_check_props(facecolor=COLOR_SLIDER_COLOR)

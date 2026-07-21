@@ -69,16 +69,13 @@ def draw_terrain_panel(
     artists.line_mast_tx.set_data([d_tx, d_tx], [z_tx, H_tx])
     artists.line_mast_rx.set_data([d_rx, d_rx], [z_rx, H_rx])
     # --- Ajuste automático de ejes ---
-    y_base_min = min(terrain.elevation_m.min(), profile.z_eff_m.min())
-    y_base_max = max(
-        profile.h_sup_m.max(),
-        profile.h_los_m.max(),
-        H_tx, H_rx,
-    )
-    y_min = y_base_min - 10
-    y_max = y_base_max + 20
+    y_min = min(terrain.elevation_m.min(), profile.z_eff_m.min())
+    h_max_a = max(profile.params.h_tx_m, profile.params.h_rx_m)
+    h_max_b = (max(profile_b.params.h_tx_m, profile_b.params.h_rx_m)
+               if profile_b is not None else 0.0)
+    top_y = float(np.max(profile.z_eff_m)) + max(h_max_a, h_max_b) + 20.0
     ax.set_xlim(0, terrain.d_total_m)
-    ax.set_ylim(y_min, y_max)
+    ax.set_ylim(y_min - 5.0, top_y)
 
     # --- Obstáculo crítico ---
     idx = profile.idx_critical
@@ -88,8 +85,8 @@ def draw_terrain_panel(
     c_ffz = profile.c_ffz_m[idx]
 
     # Referencias heredadas invisibles; la UI visible marca la cima real.
-    artists.marker_obstacle.set_data([d_obs], [y_min + 2])
-    artists.text_obstacle.set_position((d_obs + d_m[-1] * 0.01, y_min + 2))
+    artists.marker_obstacle.set_data([d_obs], [y_min - 3])
+    artists.text_obstacle.set_position((d_obs + d_m[-1] * 0.01, y_min - 3))
     
     is_clear = profile.l_d_db == 0.0
     status = " (Despejado)" if is_clear else ""

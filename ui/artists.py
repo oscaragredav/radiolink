@@ -194,3 +194,17 @@ def build_diffraction_artists(ax: Axes) -> DiffractionArtists:
         marker_v_critical_b=marker_v_critical_b,
         text_annotation_b=text_annotation_b,
     )
+
+
+def update_diffraction_curve(artists: DiffractionArtists,
+                             x_min: float, x_max: float) -> None:
+    """Extiende la curva física a todo el rango dinámico visible."""
+    from core.diffraction import diffraction_curve
+
+    span = x_max - x_min
+    max_abs_v = max(abs(x_min), abs(x_max))
+    # La solución exacta oscila más rápido al crecer |v|.
+    samples_per_unit = max(100, int(8 * max_abs_v))
+    n_points = min(20_000, max(500, int(span * samples_per_unit)))
+    v_arr = np.linspace(x_min, x_max, n_points)
+    artists.line_gd.set_data(v_arr, diffraction_curve(v_arr))

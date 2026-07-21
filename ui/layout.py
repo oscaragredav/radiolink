@@ -17,11 +17,12 @@ COLOR_TERRAIN_EFF = "#333333"
 COLOR_MAST = "#333333"
 COLOR_GD_CURVE = "#777777"
 COLOR_V_ZERO = "#CC0000"
-COLOR_WIDGET_FACE = "#21262D"
-COLOR_WIDGET_TEXT = "#C9D1D9"
+COLOR_WIDGET_FACE = "#2E3440"
+COLOR_WIDGET_EDGE = "#5E81AC"
+COLOR_WIDGET_TEXT = "#ECEFF4"
 COLOR_SLIDER_COLOR = "#4895EF"
-COLOR_BTN_FACE = "#238636"
-COLOR_BTN_HOVER = "#2EA043"
+COLOR_BTN_FACE = "#2E3440"
+COLOR_BTN_HOVER = "#434C5E"
 
 
 @dataclass
@@ -55,7 +56,10 @@ def build_figure() -> tuple[Figure, Axes, Axes, Axes]:
 
 
 def _widget_axis(fig: Figure, box: list[float]) -> Axes:
-    return fig.add_axes(box, facecolor=COLOR_WIDGET_FACE)
+    ax = fig.add_axes(box, facecolor=COLOR_WIDGET_FACE)
+    for spine in ax.spines.values():
+        spine.set_edgecolor(COLOR_WIDGET_EDGE)
+    return ax
 
 
 def build_widget_axes(fig: Figure) -> WidgetAxes:
@@ -70,9 +74,9 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
         _widget_axis(fig, [0.77, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.86, 0.155, 0.075, 0.036]),
         _widget_axis(fig, [0.68, 0.127, 0.255, 0.024]),
-        _widget_axis(fig, [0.68, 0.075, 0.115, 0.050]),
-        _widget_axis(fig, [0.80, 0.075, 0.065, 0.050]),
-        _widget_axis(fig, [0.87, 0.075, 0.080, 0.050]),
+        _widget_axis(fig, [0.68, 0.068, 0.15, 0.050]),
+        _widget_axis(fig, [0.84, 0.068, 0.15, 0.050]),
+        _widget_axis(fig, [0.68, 0.010, 0.15, 0.050]),
     )
 
 

@@ -1,7 +1,7 @@
 """Panel comparativo de la curva de difracción."""
 from matplotlib.axes import Axes
 from models.profile import LinkProfile
-from ui.artists import DiffractionArtists
+from ui.artists import DiffractionArtists, update_diffraction_curve
 
 
 def update_diffraction_panel(ax: Axes, artists: DiffractionArtists,
@@ -19,6 +19,8 @@ def update_diffraction_panel(ax: Axes, artists: DiffractionArtists,
     artists.text_annotation_b.set_position((v_cb + .05, gd_cb - .7))
     artists.text_annotation_b.set_text(f"B: v={v_cb:.3f}, Gd={gd_cb:.2f} dB")
     artists.text_annotation_b.set_visible(profile_b is not None)
-    ax.set_xlim(min(-3.0, v_c - 0.4, v_cb - 0.4),
-                max(3.0, v_c + 0.4, v_cb + 0.4))
+    x_min = min(-3.0, v_c - 0.4, v_cb - 0.4)
+    x_max = max(3.0, v_c + 0.4, v_cb + 0.4)
+    update_diffraction_curve(artists, x_min, x_max)
+    ax.set_xlim(x_min, x_max)
     ax.set_ylim(min(-24.0, gd_c - 4.0, gd_cb - 4.0), 6.0)
