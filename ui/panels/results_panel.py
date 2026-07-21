@@ -1,92 +1,79 @@
-"""
-Panel de resultados: tabla numérica con los valores clave del LinkProfile.
-No recalcula física. Solo formatea y muestra los escalares de LinkProfile.
-Referencia: ARCH v1.1, §7.
-"""
+"""Tabla comparativa de resultados de los diseños A y B."""
 from __future__ import annotations
+
 from matplotlib.axes import Axes
 from models.profile import LinkProfile
-# Líneas de texto precreadas (lista de Text)
-_NUM_LINES = 16
-def build_results_panel(ax: Axes) -> list:
-    """Crea las líneas de texto del panel de resultados.
-    Args:
-        ax: Axes del panel de resultados.
-    Returns:
-        Lista de Text objects (uno por línea de la tabla).
-    """
+
+
+class ResultCells(list):
+    """Lista compatible con Etapa 8 que además conserva la tabla nativa."""
+    def __init__(self, table):
+        self.table = table
+        super().__init__(cell.get_text() for cell in table.get_celld().values())
+
+
+def build_results_panel(ax: Axes) -> ResultCells:
     ax.set_axis_off()
     ax.set_title("Resultados", color="#C9D1D9", fontsize=9, pad=6)
-    texts = []
-    for i in range(_NUM_LINES):
-        t = ax.text(
-            0.05,
-            1.0 - (i + 1) * (1.0 / (_NUM_LINES + 1)),
-            "",
-            transform=ax.transAxes,
-            fontsize=8,
-            color="#C9D1D9",
-            va="center",
-            ha="left",
-            fontfamily="monospace",
-        )
-        texts.append(t)
-    return texts
-def update_results_panel(
-    texts: list,
-    profile: LinkProfile,
-) -> None:
-    """Actualiza el panel de resultados con los valores del LinkProfile.
-    Args:
-        texts:   Lista de Text creados por build_results_panel().
-        profile: LinkProfile producido por compute_link_profile().
-    """
-    p = profile.params
-    t = profile.terrain
-    idx = profile.idx_critical
-    c_los = profile.c_los_m[idx]
-    c_ffz = profile.c_ffz_m[idx]
-    is_clear = (profile.l_d_db == 0.0) or (profile.v_critical <= -0.78)
-    status_str = " (Despejado)" if is_clear else ""
+    labels = ["hTx", "hRx", "v_crit", "C_LOS", "C_FFZ", "Gd", "Ld",
+              "Estado", "Lfs", "Lat/Lon", "Prx", "Margen",
+              "Disponibilidad"]
+    table = ax.table(cellText=[[label, "—", "—", "—"] for label in labels],
+                     colLabels=["Parámetro", "Diseño A", "Diseño B", "Dif."],
+                     colWidths=[0.28, 0.24, 0.24, 0.20], cellLoc="right",
+                     bbox=[0.01, 0.01, 0.98, 0.96])
+    table.auto_set_font_size(False)
+    table.set_fontsize(6.5)
+    for (row, col), cell in table.get_celld().items():
+        cell.set_facecolor("#0D1117")
+        cell.set_edgecolor("#0D1117")
+        cell.set_linewidth(0)
+        cell.get_text().set_color("#C9D1D9")
+        cell.get_text().set_ha("left" if col == 0 else "right")
+        if row == 0:
+            cell.get_text().set_color("#58A6FF")
+            cell.get_text().set_weight("bold")
+    return ResultCells(table)
 
-    # Construir tabla de resultados
-    f_ghz = p.f_hz / 1e9
-    d_km = t.d_total_m / 1e3
-    rows = [
-        ("── Parámetros ──────────────", ""),
-        ("Frecuencia",                  f"{f_ghz:.3f} GHz"),
-        ("Distancia",                   f"{d_km:.3f} km"),
-        ("Factor K",                    f"{p.K:.4f}"),
-        ("h Tx",                        f"{p.h_tx_m:.2f} m"),
-        ("h Rx",                        f"{p.h_rx_m:.2f} m"),
-        ("── Difracción ──────────────", ""),
-        ("v crítico",                   f"{profile.v_critical:.4f}"),
-        ("C_LOS",                       f"{c_los:+.2f} m"),
-        ("C_FFZ",                       f"{c_ffz:+.2f} m"),
-        ("Gd(v)",                       f"{profile.g_d_db:.4f} dB"),
-        ("Ld(v)",                       f"{profile.l_d_db:.4f} dB{status_str}"),
-        ("── Enlace ──────────────────", ""),
-        ("Lfs",                         f"{profile.l_fs_db:.2f} dB"),
-        ("Prx (sin budget)",            "—" if profile.p_rx_dbm is None
-                                        else f"{profile.p_rx_dbm:.2f} dBm"),
-        ("Disponibilidad",              "—" if profile.availability_pct is None
-                                        else f"{profile.availability_pct:.4f} %"),
-    ]
-    # Rellenar textos con las filas disponibles
-    for i, text_obj in enumerate(texts):
-        if i < len(rows):
-            label, value = rows[i]
-            if value:
-                line = f"{label:<28} {value}"
-            else:
-                line = label  # encabezado de sección
-            text_obj.set_text(line)
-            # Diferenciar encabezados
-            if value == "":
-                text_obj.set_color("#58A6FF")
-                text_obj.set_fontsize(7.5)
-            else:
-                text_obj.set_color("#C9D1D9")
-                text_obj.set_fontsize(8)
-        else:
-            text_obj.set_text("")
+
+def _values(profile: LinkProfile) -> tuple[list[str], list[float | None]]:
+    p, t, i = profile.params, profile.terrain, profile.idx_critical
+    latlon = "—"
+    if t.lat is not None and t.lon is not None:
+        latlon = f"{t.lat[i]:.5f}, {t.lon[i]:.5f}"
+    clear = profile.l_d_db == 0.0
+    shown = [f"{p.h_tx_m:.2f} m", f"{p.h_rx_m:.2f} m",
+             f"{profile.v_critical:.4f}", f"{profile.c_los_m[i]:+.2f} m",
+             f"{profile.c_ffz_m[i]:+.2f} m", f"{profile.g_d_db:.4f} dB",
+             f"{profile.l_d_db:.4f} dB", "Despejado" if clear else "Obstruido",
+             f"{profile.l_fs_db:.2f} dB", latlon,
+             "—" if profile.p_rx_dbm is None else f"{profile.p_rx_dbm:.2f} dBm",
+             "—" if profile.margin_db is None else f"{profile.margin_db:.2f} dB",
+             "—" if profile.availability_pct is None
+             else f"{profile.availability_pct:.3f}%"]
+    numeric = [p.h_tx_m, p.h_rx_m, profile.v_critical,
+               float(profile.c_los_m[i]), float(profile.c_ffz_m[i]),
+               profile.g_d_db, profile.l_d_db, None, profile.l_fs_db, None,
+               profile.p_rx_dbm, profile.margin_db, profile.availability_pct]
+    return shown, numeric
+
+
+def update_results_panel(cells: ResultCells, profile: LinkProfile,
+                         profile_b: LinkProfile | None = None) -> None:
+    a, an = _values(profile)
+    b, bn = _values(profile_b or profile)
+    for row, (av, bv, avn, bvn) in enumerate(zip(a, b, an, bn), start=1):
+        cells.table[(row, 1)].get_text().set_text(av)
+        cells.table[(row, 2)].get_text().set_text(bv if profile_b else "—")
+        diff = "—" if profile_b is None or avn is None else f"{bvn - avn:+.2f}"
+        cells.table[(row, 3)].get_text().set_text(diff)
+
+    # Solo el texto de Margen comunica el estado; el fondo permanece neutro.
+    margin_row = 12
+    for col, current in ((1, profile), (2, profile_b)):
+        text = cells.table[(margin_row, col)].get_text()
+        text.set_color("#C9D1D9")
+        if current is not None and current.margin_db is not None:
+            margin = current.margin_db
+            text.set_color("#3FB950" if margin >= 10.0 else
+                           "#D29922" if margin >= 0.0 else "#F85149")

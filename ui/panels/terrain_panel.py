@@ -13,6 +13,7 @@ def draw_terrain_panel(
     ax: Axes,
     artists: TerrainArtists,
     profile: LinkProfile,
+    profile_b: LinkProfile | None = None,
 ) -> None:
     """Dibuja el perfil completo de radioenlace en ax.
     Actualiza los artistas existentes con set_data / set_xy para
@@ -84,10 +85,11 @@ def draw_terrain_panel(
     c_los = profile.c_los_m[idx]
     c_ffz = profile.c_ffz_m[idx]
 
+    # Referencias heredadas invisibles; la UI visible marca la cima real.
     artists.marker_obstacle.set_data([d_obs], [y_min + 2])
     artists.text_obstacle.set_position((d_obs + d_m[-1] * 0.01, y_min + 2))
     
-    is_clear = (profile.l_d_db == 0.0) or (profile.v_critical <= -0.78)
+    is_clear = profile.l_d_db == 0.0
     status = " (Despejado)" if is_clear else ""
     artists.text_obstacle.set_text(
         f"Elev: {z_obs:.1f} m\n"
@@ -96,3 +98,25 @@ def draw_terrain_panel(
         f"Ld={profile.l_d_db:.2f} dB{status}"
     )
     artists.text_obstacle.set_visible(True)
+    artists.text_obstacle.set_visible(False)
+    artists.marker_obstacle.set_visible(False)
+    artists.marker_obstacle_a.set_data([d_obs], [z_obs])
+    artists.text_obstacle_a.set_position((d_obs, z_obs + 3))
+    artists.text_obstacle_a.set_text(f"A: z={z_obs:.1f}m")
+
+    if profile_b is not None:
+        ib = profile_b.idx_critical
+        db, zb = d_m[ib], profile_b.z_eff_m[ib]
+        artists.line_los_b.set_data(d_m, profile_b.h_los_m)
+        artists.line_fresnel_60_b.set_data(d_m, profile_b.h_60pct_m)
+        artists.marker_obstacle_b.set_data([db], [zb])
+        artists.text_obstacle_b.set_position((db, zb + 3))
+        artists.text_obstacle_b.set_text(f"B: z={zb:.1f}m")
+        artists.line_los_b.set_visible(True)
+        artists.line_fresnel_60_b.set_visible(True)
+        artists.marker_obstacle_b.set_visible(True)
+        artists.text_obstacle_b.set_visible(True)
+    else:
+        for artist in (artists.line_los_b, artists.line_fresnel_60_b,
+                       artists.marker_obstacle_b, artists.text_obstacle_b):
+            artist.set_visible(False)

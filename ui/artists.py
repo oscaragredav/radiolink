@@ -25,6 +25,7 @@ from ui.layout import (
     COLOR_MAST,
     COLOR_GD_CURVE,
     COLOR_V_ZERO,
+    COLOR_LOS_B, COLOR_FRESNEL_B, COLOR_OBSTACLE_B,
 )
 @dataclass
 class TerrainArtists:
@@ -39,6 +40,12 @@ class TerrainArtists:
     line_mast_rx: Line2D
     marker_obstacle: Line2D
     text_obstacle: Text
+    line_los_b: Line2D
+    line_fresnel_60_b: Line2D
+    marker_obstacle_a: Line2D
+    marker_obstacle_b: Line2D
+    text_obstacle_a: Text
+    text_obstacle_b: Text
 @dataclass
 class DiffractionArtists:
     """Artistas del panel de curva Gd(v)."""
@@ -46,6 +53,8 @@ class DiffractionArtists:
     line_v_zero: Line2D
     marker_v_critical: Line2D
     text_annotation: Text
+    marker_v_critical_b: Line2D
+    text_annotation_b: Text
 def build_terrain_artists(ax: Axes) -> TerrainArtists:
     """Crea todos los artistas del panel de terreno en ax.
     Los artistas se crean con datos vacíos; se actualizan en
@@ -97,6 +106,18 @@ def build_terrain_artists(ax: Axes) -> TerrainArtists:
         0, 0, "", color=COLOR_OBSTACLE, fontsize=7.5,
         ha="left", va="bottom", visible=False,
     )
+    text_obstacle.set_visible(False)  # referencia heredada, nunca se dibuja
+    (line_los_b,) = ax.plot([], [], color=COLOR_LOS_B, lw=1.4, label="LOS B")
+    (line_fresnel_60_b,) = ax.plot([], [], color=COLOR_FRESNEL_B, lw=0.8,
+                                  ls="--", label="60% Fresnel B")
+    (marker_obstacle_a,) = ax.plot([], [], "^", color=COLOR_OBSTACLE,
+                                  ms=7, ls="none")
+    (marker_obstacle_b,) = ax.plot([], [], "s", color=COLOR_OBSTACLE_B,
+                                  ms=6, ls="none")
+    text_obstacle_a = ax.text(0, 0, "", color=COLOR_OBSTACLE, fontsize=7,
+                              ha="center", va="bottom")
+    text_obstacle_b = ax.text(0, 0, "", color=COLOR_OBSTACLE_B, fontsize=7,
+                              ha="center", va="bottom")
     ax.set_xlabel("Distancia [m]")
     ax.set_ylabel("Elevación [m]")
     ax.set_title("Perfil del radioenlace")
@@ -116,6 +137,9 @@ def build_terrain_artists(ax: Axes) -> TerrainArtists:
         line_mast_rx=line_mast_rx,
         marker_obstacle=marker_obstacle,
         text_obstacle=text_obstacle,
+        line_los_b=line_los_b, line_fresnel_60_b=line_fresnel_60_b,
+        marker_obstacle_a=marker_obstacle_a, marker_obstacle_b=marker_obstacle_b,
+        text_obstacle_a=text_obstacle_a, text_obstacle_b=text_obstacle_b,
     )
 def build_diffraction_artists(ax: Axes) -> DiffractionArtists:
     """Crea los artistas del panel de difracción.
@@ -149,11 +173,16 @@ def build_diffraction_artists(ax: Axes) -> DiffractionArtists:
         0, 0, "", color=COLOR_OBSTACLE, fontsize=7.5,
         ha="left", va="bottom", visible=False,
     )
+    (marker_v_critical_b,) = ax.plot([], [], color=COLOR_OBSTACLE_B, marker="s",
+                                    markersize=7, linestyle="none",
+                                    label="Diseño B", zorder=5)
+    text_annotation_b = ax.text(0, 0, "", color=COLOR_OBSTACLE_B, fontsize=7.5,
+                                ha="left", va="bottom", visible=False)
     ax.set_xlabel("v  [-]")
     ax.set_ylabel(r"$G_d$ [dB]")
     ax.set_title(r"Curva de difracción $G_d(v)$")
     ax.legend(
-        loc="lower right", fontsize=7,
+        loc="lower left", fontsize=7,
         facecolor="#161B22", edgecolor="#30363D",
         labelcolor="#C9D1D9",
     )
@@ -162,4 +191,6 @@ def build_diffraction_artists(ax: Axes) -> DiffractionArtists:
         line_v_zero=line_v_zero,
         marker_v_critical=marker_v_critical,
         text_annotation=text_annotation,
+        marker_v_critical_b=marker_v_critical_b,
+        text_annotation_b=text_annotation_b,
     )

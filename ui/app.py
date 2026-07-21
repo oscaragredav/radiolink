@@ -52,6 +52,8 @@ from ui.callbacks import (
     on_load_case_v1,
     on_load_case_v2,
     on_load_case_v3,
+    on_htx_b_changed, on_hrx_b_changed, on_toggle_design_b,
+    on_toggle_power_budget,
 )
 
 
@@ -89,7 +91,15 @@ class App:
 
         self.terrain = terrain
         self.params = params
-        self.pb_params = pb_params
+        self.params_b = params
+        self.show_design_b = True
+        # Defaults compactos y configurables desde el constructor.
+        self.pb_params = pb_params or PowerBudgetParams(
+            p_tx_dbm=30.0, g_tx_dbi=25.0, g_rx_dbi=25.0,
+            l_cable_tx_db=1.0, l_cable_rx_db=1.0,
+            sensitivity_dbm=-80.0, a_climate=0.5, b_terrain=1.0,
+        )
+        self.show_power_budget = pb_params is not None
         self.text_dndh: Optional[object] = None  # Text de dN/dh (etapa 8)
 
         # ── Figura y paneles de datos ──────────────────────────────────
@@ -111,7 +121,10 @@ class App:
         
         # ── Calcular perfil inicial y renderizar ──────────────────────
         self.profile: LinkProfile = compute_link_profile(
-            self.params, self.terrain, self.pb_params
+            self.params, self.terrain, self._active_pb_params()
+        )
+        self.profile_b: LinkProfile = compute_link_profile(
+            self.params_b, self.terrain, self._active_pb_params()
         )
         self._render(self.profile)
         self._sync_sliders_to_params()
@@ -175,17 +188,25 @@ class App:
             valinit=self.params.h_rx_m,
             color=COLOR_SLIDER_COLOR,
         )
+        self._sl_htx_b = Slider(
+            ax=wa.ax_slider_htx_b, label="h Tx [m]", valmin=1.0,
+            valmax=100.0, valinit=self.params_b.h_tx_m,
+            color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_hrx_b = Slider(
+            ax=wa.ax_slider_hrx_b, label="h Rx [m]", valmin=1.0,
+            valmax=100.0, valinit=self.params_b.h_rx_m,
+            color=COLOR_SLIDER_COLOR,
+        )
         # Estilo de los sliders
-        for sl in (self._sl_freq, self._sl_k, self._sl_htx, self._sl_hrx):
+        for sl in (self._sl_freq, self._sl_k, self._sl_htx, self._sl_hrx,
+                   self._sl_htx_b, self._sl_hrx_b):
             sl.label.set_color(COLOR_WIDGET_TEXT)
             sl.valtext.set_color(COLOR_WIDGET_TEXT)
         # ── Texto de dN/dh (actualizado por slider K) ─────────────────
         dndh_init = gradient_from_k(self.params.K)
-        self.text_dndh = self.fig.text(
-            0.25, wa.ax_slider_freq.get_position().y1 + 0.005,
-            f"dN/dh = {dndh_init:.1f} N/km",
-            color="#8B949E", fontsize=7.5, ha="left",
-        )
+        self.text_dndh = self._sl_k.valtext
+        self.text_dndh.set_text(f"{self.params.K:.2f} | {dndh_init:.1f} N/km")
         # ── Botones de casos ───────────────────────────────────────────
         self._btn_v1 = Button(
             ax=wa.ax_btn_v1, label="V-1",
@@ -208,6 +229,13 @@ class App:
             labels=["Terreno crudo"],
             actives=[True],
         )
+        self._chk_design_b = CheckButtons(
+            ax=wa.ax_toggle_design_b, labels=["Diseño B"], actives=[True]
+        )
+        self._chk_power_budget = CheckButtons(
+            ax=wa.ax_toggle_power_budget, labels=["Power Budget"],
+            actives=[self.show_power_budget]
+        )
         try:
             # matplotlib >= 3.9 usa set_check_props (solo si acepta facecolor)
             self._chk_raw.set_check_props(facecolor=COLOR_SLIDER_COLOR)
@@ -218,36 +246,36 @@ class App:
         self._sl_k.on_changed(lambda v: on_k_changed(v, self))
         self._sl_htx.on_changed(lambda v: on_htx_changed(v, self))
         self._sl_hrx.on_changed(lambda v: on_hrx_changed(v, self))
+        self._sl_htx_b.on_changed(lambda v: on_htx_b_changed(v, self))
+        self._sl_hrx_b.on_changed(lambda v: on_hrx_b_changed(v, self))
         self._btn_v1.on_clicked(lambda e: on_load_case_v1(e, self))
         self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
         self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
         self._chk_raw.on_clicked(lambda lbl: on_toggle_raw_terrain(lbl, self))
+        self._chk_design_b.on_clicked(lambda lbl: on_toggle_design_b(lbl, self))
+        self._chk_power_budget.on_clicked(
+            lambda lbl: on_toggle_power_budget(lbl, self)
+        )
         # Añadir etiquetas descriptivas sobre los sliders y botones
         self._add_widget_labels()
     def _add_widget_labels(self) -> None:
         """Añade textos decorativos a la zona de widgets."""
         wa = self._widget_axes
-        y_section = wa.ax_slider_freq.get_position().y1 + 0.005
-        self.fig.text(
-            0.08, y_section,
-            "Parámetros de diseño",
-            color="#58A6FF", fontsize=8, fontweight="bold",
-        )
-        y_btns = wa.ax_btn_v1.get_position().y1 + 0.005
-        self.fig.text(
-            _btn_label_x(wa),
-            y_btns,
-            "Casos de validación",
-            color="#58A6FF", fontsize=8, fontweight="bold",
-        )
+        wa.ax_slider_freq.set_title("Diseño A", color="#58A6FF", fontsize=8,
+                                    fontweight="bold", loc="left", pad=5)
+        wa.ax_slider_htx_b.set_title("Diseño B", color="#58A6FF", fontsize=8,
+                                     fontweight="bold", loc="left", pad=5)
+        wa.ax_btn_v1.set_title("Casos", color="#58A6FF", fontsize=8,
+                               fontweight="bold", loc="left", pad=5)
 
     def _render(self, profile: LinkProfile) -> None:
         """Actualiza todos los paneles con el perfil dado."""
-        draw_terrain_panel(self.ax_terrain, self.terrain_artists, profile)
+        profile_b = self.profile_b if self.show_design_b else None
+        draw_terrain_panel(self.ax_terrain, self.terrain_artists, profile, profile_b)
         update_diffraction_panel(
-            self.ax_diffraction, self.diffraction_artists, profile
+            self.ax_diffraction, self.diffraction_artists, profile, profile_b
         )
-        update_results_panel(self.result_texts, profile)
+        update_results_panel(self.result_texts, profile, profile_b)
         self.fig.canvas.draw_idle()
     
     def _recompute(self) -> None:
@@ -256,9 +284,16 @@ class App:
         Llamado por todos los callbacks de widgets.
         """
         self.profile = compute_link_profile(
-            self.params, self.terrain, self.pb_params
+            self.params, self.terrain, self._active_pb_params()
+        )
+        self.profile_b = compute_link_profile(
+            self.params_b, self.terrain, self._active_pb_params()
         )
         self._render(self.profile)
+
+    def _active_pb_params(self) -> Optional[PowerBudgetParams]:
+        """Budget configurado cuando el checkbox está activo."""
+        return self.pb_params if self.show_power_budget else None
 
     def _sync_sliders_to_params(self) -> None:
         """Sincroniza los sliders con los valores actuales de self.params.
@@ -269,9 +304,11 @@ class App:
         self._sl_k.set_val(self.params.K)
         self._sl_htx.set_val(self.params.h_tx_m)
         self._sl_hrx.set_val(self.params.h_rx_m)
+        self._sl_htx_b.set_val(self.params_b.h_tx_m)
+        self._sl_hrx_b.set_val(self.params_b.h_rx_m)
         if self.text_dndh is not None:
             dndh = gradient_from_k(self.params.K)
-            self.text_dndh.set_text(f"dN/dh = {dndh:.1f} N/km")
+            self.text_dndh.set_text(f"{self.params.K:.2f} | {dndh:.1f} N/km")
 
 def _btn_label_x(wa) -> float:
     """Posición X del label de botones."""
@@ -279,4 +316,3 @@ def _btn_label_x(wa) -> float:
         return wa.ax_btn_v1.get_position().x0
     except Exception:
         return 0.67
-
