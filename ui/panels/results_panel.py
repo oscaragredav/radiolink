@@ -16,7 +16,7 @@ def build_results_panel(ax: Axes) -> ResultCells:
     ax.set_axis_off()
     ax.set_title("Resultados", color="#C9D1D9", fontsize=9, pad=6)
     labels = ["hTx", "hRx", "v_crit", "C_LOS", "C_FFZ", "Gd", "Ld",
-              "Estado", "Lfs", "Lat/Lon", "Prx", "Margen",
+              "Estado", "Lfs", "Lat/Lon", "Prx", "Margen M",
               "Disponibilidad"]
     table = ax.table(cellText=[[label, "—", "—", "—"] for label in labels],
                      colLabels=["Parámetro", "Diseño A", "Diseño B", "Dif."],

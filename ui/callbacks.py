@@ -85,6 +85,23 @@ def on_toggle_design_b(label: str, app: "App") -> None:
 def on_toggle_power_budget(label: str, app: "App") -> None:
     """Activa/desactiva el budget y recalcula ambos diseños en el core."""
     app.show_power_budget = not app.show_power_budget
+    app._set_budget_controls_visible(app.show_power_budget)
+    app._recompute()
+
+def on_ptx_changed(val: float, app: "App") -> None:
+    app.pb_params = replace(app.pb_params, p_tx_dbm=float(val))
+    app._recompute()
+
+def on_gtx_changed(val: float, app: "App") -> None:
+    app.pb_params = replace(app.pb_params, g_tx_dbi=float(val))
+    app._recompute()
+
+def on_grx_changed(val: float, app: "App") -> None:
+    app.pb_params = replace(app.pb_params, g_rx_dbi=float(val))
+    app._recompute()
+
+def on_sensitivity_changed(val: float, app: "App") -> None:
+    app.pb_params = replace(app.pb_params, sensitivity_dbm=float(val))
     app._recompute()
 # ---------------------------------------------------------------------------
 # Botones de carga de casos de validación

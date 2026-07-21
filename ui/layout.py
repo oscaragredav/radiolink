@@ -40,6 +40,10 @@ class WidgetAxes:
     ax_toggle_raw: Axes
     ax_toggle_design_b: Axes
     ax_toggle_power_budget: Axes
+    ax_slider_ptx: Axes
+    ax_slider_gtx: Axes
+    ax_slider_grx: Axes
+    ax_slider_sensitivity: Axes
 
 
 def build_figure() -> tuple[Figure, Axes, Axes, Axes]:
@@ -77,6 +81,10 @@ def build_widget_axes(fig: Figure) -> WidgetAxes:
         _widget_axis(fig, [0.68, 0.068, 0.15, 0.050]),
         _widget_axis(fig, [0.84, 0.068, 0.15, 0.050]),
         _widget_axis(fig, [0.68, 0.010, 0.15, 0.050]),
+        _widget_axis(fig, [0.75, 0.190, 0.14, 0.018]),
+        _widget_axis(fig, [0.75, 0.153, 0.14, 0.018]),
+        _widget_axis(fig, [0.75, 0.116, 0.14, 0.018]),
+        _widget_axis(fig, [0.75, 0.079, 0.14, 0.018]),
     )
 
 

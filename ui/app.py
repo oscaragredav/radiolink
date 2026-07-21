@@ -55,6 +55,7 @@ from ui.callbacks import (
     on_htx_b_changed, on_hrx_b_changed, on_toggle_design_b,
     on_toggle_power_budget,
     on_load_api,
+    on_ptx_changed, on_gtx_changed, on_grx_changed, on_sensitivity_changed,
 )
 
 
@@ -96,9 +97,9 @@ class App:
         self.show_design_b = True
         # Defaults compactos y configurables desde el constructor.
         self.pb_params = pb_params or PowerBudgetParams(
-            p_tx_dbm=30.0, g_tx_dbi=25.0, g_rx_dbi=25.0,
-            l_cable_tx_db=1.0, l_cable_rx_db=1.0,
-            sensitivity_dbm=-80.0, a_climate=0.5, b_terrain=1.0,
+            p_tx_dbm=20.0, g_tx_dbi=24.0, g_rx_dbi=24.0,
+            l_cable_tx_db=0.0, l_cable_rx_db=0.0,
+            sensitivity_dbm=-85.0, a_climate=0.5, b_terrain=1.0,
         )
         self.show_power_budget = pb_params is not None
         self.text_dndh: Optional[object] = None  # Text de dN/dh (etapa 8)
@@ -199,9 +200,27 @@ class App:
             valmax=100.0, valinit=self.params_b.h_rx_m,
             color=COLOR_SLIDER_COLOR,
         )
+        self._sl_ptx = Slider(
+            ax=wa.ax_slider_ptx, label="Ptx [dBm]", valmin=0.0, valmax=30.0,
+            valinit=self.pb_params.p_tx_dbm, color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_gtx = Slider(
+            ax=wa.ax_slider_gtx, label="Gtx [dBi]", valmin=0.0, valmax=40.0,
+            valinit=self.pb_params.g_tx_dbi, color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_grx = Slider(
+            ax=wa.ax_slider_grx, label="Grx [dBi]", valmin=0.0, valmax=40.0,
+            valinit=self.pb_params.g_rx_dbi, color=COLOR_SLIDER_COLOR,
+        )
+        self._sl_sensitivity = Slider(
+            ax=wa.ax_slider_sensitivity, label="Sens Rx", valmin=-110.0,
+            valmax=-60.0, valinit=self.pb_params.sensitivity_dbm,
+            color=COLOR_SLIDER_COLOR,
+        )
         # Estilo de los sliders
         for sl in (self._sl_freq, self._sl_k, self._sl_htx, self._sl_hrx,
-                   self._sl_htx_b, self._sl_hrx_b):
+                   self._sl_htx_b, self._sl_hrx_b, self._sl_ptx,
+                   self._sl_gtx, self._sl_grx, self._sl_sensitivity):
             sl.label.set_color(COLOR_WIDGET_TEXT)
             sl.valtext.set_color(COLOR_WIDGET_TEXT)
         # ── Texto de dN/dh (actualizado por slider K) ─────────────────
@@ -258,6 +277,12 @@ class App:
         self._sl_hrx.on_changed(lambda v: on_hrx_changed(v, self))
         self._sl_htx_b.on_changed(lambda v: on_htx_b_changed(v, self))
         self._sl_hrx_b.on_changed(lambda v: on_hrx_b_changed(v, self))
+        self._sl_ptx.on_changed(lambda v: on_ptx_changed(v, self))
+        self._sl_gtx.on_changed(lambda v: on_gtx_changed(v, self))
+        self._sl_grx.on_changed(lambda v: on_grx_changed(v, self))
+        self._sl_sensitivity.on_changed(
+            lambda v: on_sensitivity_changed(v, self)
+        )
         self._btn_v1.on_clicked(lambda e: on_load_case_v1(e, self))
         self._btn_v2.on_clicked(lambda e: on_load_case_v2(e, self))
         self._btn_v3.on_clicked(lambda e: on_load_case_v3(e, self))
@@ -267,6 +292,7 @@ class App:
         self._chk_power_budget.on_clicked(
             lambda lbl: on_toggle_power_budget(lbl, self)
         )
+        self._set_budget_controls_visible(self.show_power_budget)
         # Añadir etiquetas descriptivas sobre los sliders y botones
         self._add_widget_labels()
     def _add_widget_labels(self) -> None:
@@ -305,6 +331,17 @@ class App:
     def _active_pb_params(self) -> Optional[PowerBudgetParams]:
         """Budget configurado cuando el checkbox está activo."""
         return self.pb_params if self.show_power_budget else None
+
+    def _set_budget_controls_visible(self, visible: bool) -> None:
+        """Alterna el modo compacto de edición del presupuesto."""
+        wa = self._widget_axes
+        for ax in (wa.ax_slider_ptx, wa.ax_slider_gtx, wa.ax_slider_grx,
+                   wa.ax_slider_sensitivity):
+            ax.set_visible(visible)
+        for ax in (wa.ax_btn_v1, wa.ax_btn_v2, wa.ax_btn_v3, wa.ax_btn_api,
+                   wa.ax_toggle_raw, wa.ax_toggle_design_b):
+            ax.set_visible(not visible)
+        self.fig.canvas.draw_idle()
 
     def load_api_profile(self, tx_lat: float, tx_lon: float,
                          rx_lat: float, rx_lon: float) -> bool:
